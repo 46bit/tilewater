@@ -33,7 +33,7 @@ impl fmt::Display for Tile {
                     Orientation::Horizontal => write!(f, "-"),
                 }
             }
-            Tile::Paving { .. } => write!(f, "█"),
+            Tile::Paving { .. } => write!(f, ":"),
             Tile::Rails { orientation, .. } => {
                 match orientation {
                     Orientation::Vertical => write!(f, "‖"),
@@ -46,12 +46,14 @@ impl fmt::Display for Tile {
 
 #[derive(Clone, Debug)]
 pub struct TileMap {
+    pub cursor: Coord2,
     dimensions: Coord2,
     tiles: HashMap<Coord2, Tile>,
 }
 
 impl TileMap {
     pub fn new(dimensions: Coord2) -> TileMap {
+        let cursor = Coord2 { x: 0, y: 0 };
         let mut tiles = HashMap::new();
         // @TODO: Instead spawn a station on the railway track, and an entranceway
         // - and maybe a road tile attached the entranceway, if the roadless entryway
@@ -64,7 +66,11 @@ impl TileMap {
                          entryways_pos: HashSet::new(),
                          pavings_pos: HashSet::new(),
                      });
-        TileMap { dimensions, tiles }
+        TileMap {
+            cursor,
+            dimensions,
+            tiles,
+        }
     }
 
     pub fn height(&self) -> u64 {
@@ -77,7 +83,7 @@ impl TileMap {
 
     pub fn build(&mut self, location: Coord2, building: Building) -> bool {
         // Find possible entryways.
-        let possible_entryways = self.nsew_entryways(location);
+        let possible_entryways = self.entryways_to_build_from(location);
         // Take the first road + entryway coordinates and its orientation.
         if possible_entryways.is_empty() {
             return false;
@@ -148,10 +154,22 @@ impl TileMap {
             }
         }
         // Must have a nearby road to build an entrance from.
-        !self.nsew_nearby_roads(location).is_empty()
+        !self.roads_to_enter_from(location).is_empty()
     }
 
     pub fn can_pave(&self, location: Coord2) -> bool {
+        for neighbour in location.neighbours() {
+            // Must not be:
+            // - Building
+            // - Entryway
+            // - Railway
+            // At least for now, anything new we add will also count.
+            match self.get(neighbour) {
+                None |
+                Some(&Tile::Paving { .. }) => {}
+                _ => return false,
+            }
+        }
         !self.neighbouring_pavings(location).is_empty()
     }
 
@@ -168,7 +186,7 @@ impl TileMap {
 
     // pub fn can_rail(&self, location: Coord2) -> bool {}
 
-    fn nsew_nearby_roads(&self, location: Coord2) -> Vec<Coord2> {
+    fn roads_to_enter_from(&self, location: Coord2) -> Vec<Coord2> {
         let mut locations = Vec::with_capacity(4);
         if location.y >= 2 {
             let northward_road = location - Coord2 { x: 0, y: 2 };
@@ -191,8 +209,8 @@ impl TileMap {
             .collect()
     }
 
-    fn nsew_entryways(&self, location: Coord2) -> Vec<(Coord2, Coord2, Orientation)> {
-        let nsew_nearby_roads = self.nsew_nearby_roads(location);
+    fn entryways_to_build_from(&self, location: Coord2) -> Vec<(Coord2, Coord2, Orientation)> {
+        let nsew_nearby_roads = self.roads_to_enter_from(location);
         let mut entryway_coords = Vec::with_capacity(nsew_nearby_roads.len());
         for nsew_nearby_road in nsew_nearby_roads {
             let orientation = Orientation::between_coord2s(location, nsew_nearby_road)

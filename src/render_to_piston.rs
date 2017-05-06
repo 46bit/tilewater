@@ -4,6 +4,15 @@ use super::*;
 
 const PPU: u64 = 10;
 
+pub enum Cmd {
+    Up,
+    Down,
+    Left,
+    Right,
+    Pave,
+    Build(Building),
+}
+
 pub struct RenderToPiston {
     window: PistonWindow,
     tile_map: Arc<RwLock<TileMap>>,
@@ -16,19 +25,63 @@ impl RenderToPiston {
 
     pub fn render_loop(&mut self) {
         while let Some(e) = self.window.next() {
+            if let Event::Input(Input::Text(ref t)) = e {
+                for c in t.chars() {
+                    self.char_command(c);
+                }
+            }
             self.draw(&e);
         }
     }
 
+    fn char_command(&mut self, c: char) {
+        let cmd = match c {
+            '\u{f700}' => Cmd::Up,
+            '\u{f701}' => Cmd::Down,
+            '\u{f702}' => Cmd::Left,
+            '\u{f703}' => Cmd::Right,
+            ' ' => Cmd::Pave,
+            c => {
+                match Building::from_code(c) {
+                    Some(building) => Cmd::Build(building),
+                    None => {
+                        println!("Unhandled char input: {:?}", c);
+                        return;
+                    }
+                }
+            }
+        };
+
+        let mut tile_map = self.tile_map.write().unwrap();
+        match cmd {
+            Cmd::Up => {
+                tile_map.cursor.y = tile_map.cursor.y.saturating_sub(1);
+            }
+            Cmd::Down => {
+                tile_map.cursor.y += 1;
+            }
+            Cmd::Left => {
+                tile_map.cursor.x = tile_map.cursor.x.saturating_sub(1);
+            }
+            Cmd::Right => {
+                tile_map.cursor.x += 1;
+            }
+            Cmd::Pave => {
+                let pos = tile_map.cursor;
+                if tile_map.can_pave(pos) {
+                    tile_map.pave(pos);
+                }
+            }
+            Cmd::Build(building) => {
+                let pos = tile_map.cursor;
+                if tile_map.can_build(pos) {
+                    tile_map.build(pos, building);
+                }
+            }
+        }
+    }
+
     fn draw(&mut self, e: &Event) {
-
-        //     clear([1.0; 4], g);
-        //     rectangle([1.0, 0.0, 0.0, 1.0], // red
-        //               [0.0, 0.0, 100.0, 100.0],
-        //               c.transform,
-        //               g);
-        // });
-
         let tile_map = self.tile_map.read().unwrap();
         self.window
             .draw_2d(e, |c, g| for y in 0..tile_map.height() {
@@ -39,7 +92,17 @@ impl RenderToPiston {
                         Self::draw_tile(c, g, tile_map.clone(), l, tile);
                     }
                 }
+                Self::draw_cursor(c, g, tile_map.cursor);
             });
+    }
+
+    fn draw_cursor(c: Context, g: &mut G2d, cursor: Coord2) {
+        let x = cursor.x * PPU;
+        let y = cursor.y * PPU;
+        rectangle([0.0, 0.0, 0.0, 0.3],
+                  [x as f64, y as f64, PPU as f64, PPU as f64],
+                  c.transform,
+                  g);
     }
 
     fn draw_tile(c: Context, g: &mut G2d, _: TileMap, l: Coord2, tile: &Tile) {
@@ -106,13 +169,13 @@ impl RenderToPiston {
         let y = l.y * PPU;
         match orientation {
             Orientation::Vertical => {
-                rectangle([0.0, 0.0, 0.0, 1.0],
+                rectangle([0.6, 0.6, 0.6, 1.0],
                           [(x + PPU / 2 - 1) as f64, y as f64, 2.0, PPU as f64],
                           c.transform,
                           g);
             }
             Orientation::Horizontal => {
-                rectangle([0.0, 0.0, 0.0, 1.0],
+                rectangle([0.6, 0.6, 0.6, 1.0],
                           [x as f64, (y + PPU / 2 - 1) as f64, PPU as f64, 2.0],
                           c.transform,
                           g);
@@ -123,7 +186,7 @@ impl RenderToPiston {
     fn draw_paving(c: Context, g: &mut G2d, l: Coord2) {
         let x = l.x * PPU;
         let y = l.y * PPU;
-        rectangle([0.0, 0.0, 0.0, 1.0],
+        rectangle([0.6, 0.6, 0.6, 1.0],
                   [x as f64, y as f64, PPU as f64, PPU as f64],
                   c.transform,
                   g);
