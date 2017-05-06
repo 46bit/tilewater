@@ -115,10 +115,14 @@ impl RenderToPiston {
 
     fn draw_tile(c: Context, g: &mut G2d, _: TileMap, l: Coord2, tile: &Tile) {
         match *tile {
-            Tile::Building { ref building, .. } => Self::draw_building(c, g, l, building),
-            Tile::Entrance { orientation, .. } => Self::draw_entrance(c, g, l, orientation),
-            Tile::Paving { .. } => Self::draw_paving(c, g, l),
-            Tile::Rails { orientation, .. } => Self::draw_rails(c, g, l, orientation),
+            Tile::Building(BuildingTile { ref building, .. }) => {
+                Self::draw_building(c, g, l, building)
+            }
+            Tile::Entrance(EntranceTile { orientation, .. }) => {
+                Self::draw_entrance(c, g, l, orientation)
+            }
+            Tile::Paving(PavingTile { .. }) => Self::draw_paving(c, g, l),
+            Tile::Rails(RailsTile { orientation, .. }) => Self::draw_rails(c, g, l, orientation),
         }
     }
 

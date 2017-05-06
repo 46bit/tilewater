@@ -2,39 +2,110 @@ use std::collections::*;
 use super::*;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BuildingTile {
+    pub building: Building,
+    pub entryway_pos: Coord2,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct EntranceTile {
+    pub orientation: Orientation,
+    pub road_pos: Coord2,
+    pub building_pos: Coord2,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PavingTile {
+    pub entryways_pos: HashSet<Coord2>,
+    pub pavings_pos: HashSet<Coord2>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RailsTile {
+    pub is_station: bool,
+    pub orientation: Orientation,
+    pub rails_pos: HashSet<Coord2>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Tile {
-    Building {
-        building: Building,
-        entryway_pos: Coord2,
-    },
-    Entrance {
-        orientation: Orientation,
-        road_pos: Coord2,
-        building_pos: Coord2,
-    },
-    Paving {
-        entryways_pos: HashSet<Coord2>,
-        pavings_pos: HashSet<Coord2>,
-    },
-    Rails {
-        is_station: bool,
-        orientation: Orientation,
-        rails_pos: HashSet<Coord2>,
-    },
+    Building(BuildingTile),
+    Entrance(EntranceTile),
+    Paving(PavingTile),
+    Rails(RailsTile),
+}
+
+impl Tile {
+    // .get(pos).and_then(Tile::as_building).expect("Must be a building.")
+    pub fn as_building(&self) -> Option<&BuildingTile> {
+        match *self {
+            Tile::Building(ref building_tile) => Some(building_tile),
+            _ => None,
+        }
+    }
+
+    pub fn as_building_mut(&mut self) -> Option<&mut BuildingTile> {
+        match *self {
+            Tile::Building(ref mut building_tile) => Some(building_tile),
+            _ => None,
+        }
+    }
+
+    pub fn as_entrance(&self) -> Option<&EntranceTile> {
+        match *self {
+            Tile::Entrance(ref entrance_tile) => Some(entrance_tile),
+            _ => None,
+        }
+    }
+
+    pub fn as_entrance_mut(&mut self) -> Option<&mut EntranceTile> {
+        match *self {
+            Tile::Entrance(ref mut entrance_tile) => Some(entrance_tile),
+            _ => None,
+        }
+    }
+
+    pub fn as_paving(&self) -> Option<&PavingTile> {
+        match *self {
+            Tile::Paving(ref paving_tile) => Some(paving_tile),
+            _ => None,
+        }
+    }
+
+    pub fn as_paving_mut(&mut self) -> Option<&mut PavingTile> {
+        match *self {
+            Tile::Paving(ref mut paving_tile) => Some(paving_tile),
+            _ => None,
+        }
+    }
+
+    pub fn as_rails(&self) -> Option<&RailsTile> {
+        match *self {
+            Tile::Rails(ref rails_tile) => Some(rails_tile),
+            _ => None,
+        }
+    }
+
+    pub fn as_rails_mut(&mut self) -> Option<&mut RailsTile> {
+        match *self {
+            Tile::Rails(ref mut rails_tile) => Some(rails_tile),
+            _ => None,
+        }
+    }
 }
 
 impl fmt::Display for Tile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Tile::Building { building, .. } => write!(f, "{}", building),
-            Tile::Entrance { orientation, .. } => {
+            Tile::Building(BuildingTile { building, .. }) => write!(f, "{}", building),
+            Tile::Entrance(EntranceTile { orientation, .. }) => {
                 match orientation {
                     Orientation::Vertical => write!(f, "|"),
                     Orientation::Horizontal => write!(f, "-"),
                 }
             }
-            Tile::Paving { .. } => write!(f, ":"),
-            Tile::Rails { orientation, .. } => {
+            Tile::Paving(PavingTile { .. }) => write!(f, ":"),
+            Tile::Rails(RailsTile { orientation, .. }) => {
                 match orientation {
                     Orientation::Vertical => write!(f, "‖"),
                     Orientation::Horizontal => write!(f, "="),
@@ -62,10 +133,10 @@ impl TileMap {
                          x: dimensions.x / 2,
                          y: 0,
                      },
-                     Tile::Paving {
-                         entryways_pos: HashSet::new(),
-                         pavings_pos: HashSet::new(),
-                     });
+                     Tile::Paving(PavingTile {
+                                      entryways_pos: HashSet::new(),
+                                      pavings_pos: HashSet::new(),
+                                  }));
         TileMap {
             cursor,
             dimensions,
@@ -91,45 +162,54 @@ impl TileMap {
         let (road_pos, entryway_pos, orientation) = possible_entryways[0];
 
         // Insert the new building.
-        let building_tile = Tile::Building {
-            building: building,
-            entryway_pos: entryway_pos,
-        };
+        let building_tile = Tile::Building(BuildingTile {
+                                               building: building,
+                                               entryway_pos: entryway_pos,
+                                           });
         self.tiles.insert(location, building_tile);
 
         // Insert the new entrance.
-        let entrance_tile = Tile::Entrance {
-            road_pos: road_pos,
-            building_pos: location,
-            orientation: orientation,
-        };
+        let entrance_tile = Tile::Entrance(EntranceTile {
+                                               road_pos: road_pos,
+                                               building_pos: location,
+                                               orientation: orientation,
+                                           });
         self.tiles.insert(entryway_pos, entrance_tile);
 
         // Update road the entrance attaches, to record this new entryway.
-        match self.tiles.get_mut(&road_pos) {
-            Some(&mut Tile::Paving { ref mut entryways_pos, .. }) => {
-                entryways_pos.insert(entryway_pos);
-            }
-            _ => unreachable!("Known paving tile was not present."),
-        };
+        self.tiles
+            .get_mut(&road_pos)
+            .and_then(Tile::as_paving_mut)
+            .expect("Known paving tile was not present.")
+            .entryways_pos
+            .insert(entryway_pos);
 
         true
     }
 
     pub fn pave(&mut self, location: Coord2) {
-        let paving_tile = Tile::Paving {
-            entryways_pos: HashSet::new(),
-            pavings_pos: self.neighbouring_pavings(location),
-        };
+        let neighbouring_pavings = self.neighbouring_pavings(location);
+        for neighbouring_paving in &neighbouring_pavings {
+            self.tiles
+                .get_mut(neighbouring_paving)
+                .and_then(Tile::as_paving_mut)
+                .expect("Known paving tile was not present.")
+                .pavings_pos
+                .insert(location);
+        }
+        let paving_tile = Tile::Paving(PavingTile {
+                                           entryways_pos: HashSet::new(),
+                                           pavings_pos: neighbouring_pavings,
+                                       });
         self.tiles.insert(location, paving_tile);
     }
 
     pub fn rail(&mut self, location: Coord2) {
-        let rail_tile = Tile::Rails {
-            rails_pos: HashSet::new(),
-            orientation: Orientation::Horizontal,
-            is_station: false,
-        };
+        let rail_tile = Tile::Rails(RailsTile {
+                                        rails_pos: HashSet::new(),
+                                        orientation: Orientation::Horizontal,
+                                        is_station: false,
+                                    });
         self.tiles.insert(location, rail_tile);
     }
 
@@ -142,29 +222,29 @@ impl TileMap {
             tile.clone()
         };
         match tile_cloned {
-            Tile::Building { entryway_pos, .. } => {
+            Tile::Building(BuildingTile { entryway_pos, .. }) => {
                 self.delete_building(location, entryway_pos);
                 // @TODO: Remove entryway record from paved tile.
             }
-            Tile::Entrance { building_pos, .. } => {
+            Tile::Entrance(EntranceTile { building_pos, .. }) => {
                 self.delete_building(building_pos, location);
             }
-            Tile::Paving {
-                entryways_pos,
-                pavings_pos,
-            } => {
+            Tile::Paving(PavingTile {
+                             entryways_pos,
+                             pavings_pos,
+                         }) => {
                 // Delete entrances, their buildings and this paving.
                 for entryway_pos in entryways_pos {
                     self.delete(entryway_pos);
                 }
                 // Remove record from neighbouring paved tiles.
                 for paving_pos in pavings_pos {
-                    match self.tiles.get_mut(&paving_pos) {
-                        Some(&mut Tile::Paving { ref mut pavings_pos, .. }) => {
-                            pavings_pos.remove(&location);
-                        }
-                        _ => panic!("Known paving did not exist."),
-                    }
+                    self.tiles
+                        .get_mut(&paving_pos)
+                        .and_then(Tile::as_paving_mut)
+                        .expect("Known paving tile was not present.")
+                        .pavings_pos
+                        .remove(&location);
                 }
                 // Remove paving.
                 self.tiles.remove(&location);
@@ -178,11 +258,11 @@ impl TileMap {
     fn delete_building(&mut self, building_pos: Coord2, entryway_pos: Coord2) {
         // Remove record of building entryway from its access paving.
         let paving_pos = match self.tiles.get(&entryway_pos) {
-            Some(&Tile::Entrance { road_pos, .. }) => road_pos,
+            Some(&Tile::Entrance(EntranceTile { road_pos, .. })) => road_pos,
             _ => panic!("Known entryway did not exist."),
         };
         match self.tiles.get_mut(&paving_pos) {
-            Some(&mut Tile::Paving { ref mut entryways_pos, .. }) => {
+            Some(&mut Tile::Paving(PavingTile { ref mut entryways_pos, .. })) => {
                 entryways_pos.remove(&entryway_pos);
             }
             _ => {
@@ -241,10 +321,7 @@ impl TileMap {
         location
             .neighbours()
             .into_iter()
-            .filter(|l| match self.get(*l) {
-                        Some(&Tile::Paving { .. }) => true,
-                        _ => false,
-                    })
+            .filter(|l| self.tiles.get(l).and_then(Tile::as_paving).is_some())
             .collect()
     }
 
