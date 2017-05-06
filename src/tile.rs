@@ -5,21 +5,21 @@ use super::*;
 pub enum Tile {
     Building {
         building: Building,
-        entryway_coord: Coord2,
+        entryway_pos: Coord2,
     },
     Entrance {
-        road_coord: Coord2,
-        building_coord: Coord2,
         orientation: Orientation,
+        road_pos: Coord2,
+        building_pos: Coord2,
     },
     Paving {
-        entryway_coords: HashSet<Coord2>,
-        paving_coords: HashSet<Coord2>,
+        entryways_pos: HashSet<Coord2>,
+        pavings_pos: HashSet<Coord2>,
     },
     Rails {
-        rail_coords: HashSet<Coord2>,
-        orientation: Orientation,
         is_station: bool,
+        orientation: Orientation,
+        rails_pos: HashSet<Coord2>,
     },
 }
 
@@ -53,13 +53,16 @@ pub struct TileMap {
 impl TileMap {
     pub fn new(dimensions: Coord2) -> TileMap {
         let mut tiles = HashMap::new();
+        // @TODO: Instead spawn a station on the railway track, and an entranceway
+        // - and maybe a road tile attached the entranceway, if the roadless entryway
+        // causes coding problems.
         tiles.insert(Coord2 {
                          x: dimensions.x / 2,
                          y: 0,
                      },
                      Tile::Paving {
-                         entryway_coords: HashSet::new(),
-                         paving_coords: HashSet::new(),
+                         entryways_pos: HashSet::new(),
+                         pavings_pos: HashSet::new(),
                      });
         TileMap { dimensions, tiles }
     }
@@ -72,40 +75,56 @@ impl TileMap {
         self.dimensions.x
     }
 
-    pub fn build(&mut self, location: Coord2, building: Building) {
-        let (road_coord, entryway_coord, orientation) = self.nsew_entryways(location)[0];
-        self.tiles
-            .insert(entryway_coord,
-                    Tile::Entrance {
-                        road_coord: road_coord,
-                        building_coord: location,
-                        orientation: orientation,
-                    });
-        self.tiles
-            .insert(location,
-                    Tile::Building {
-                        building: building,
-                        entryway_coord: entryway_coord,
-                    });
+    pub fn build(&mut self, location: Coord2, building: Building) -> bool {
+        // Find possible entryways.
+        let possible_entryways = self.nsew_entryways(location);
+        // Take the first road + entryway coordinates and its orientation.
+        if possible_entryways.is_empty() {
+            return false;
+        }
+        let (road_pos, entryway_pos, orientation) = possible_entryways[0];
+
+        // Insert the new building.
+        let building_tile = Tile::Building {
+            building: building,
+            entryway_pos: entryway_pos,
+        };
+        self.tiles.insert(location, building_tile);
+
+        // Insert the new entrance.
+        let entrance_tile = Tile::Entrance {
+            road_pos: road_pos,
+            building_pos: location,
+            orientation: orientation,
+        };
+        self.tiles.insert(entryway_pos, entrance_tile);
+
+        // Update road the entrance attaches, to record this new entryway.
+        match self.tiles.get_mut(&road_pos) {
+            Some(&mut Tile::Paving { ref mut entryways_pos, .. }) => {
+                entryways_pos.insert(entryway_pos);
+            }
+            _ => unreachable!("Known paving tile was not present."),
+        };
+
+        true
     }
 
     pub fn pave(&mut self, location: Coord2) {
-        self.tiles
-            .insert(location,
-                    Tile::Paving {
-                        entryway_coords: HashSet::new(),
-                        paving_coords: HashSet::new(),
-                    });
+        let paving_tile = Tile::Paving {
+            entryways_pos: HashSet::new(),
+            pavings_pos: self.neighbouring_pavings(location),
+        };
+        self.tiles.insert(location, paving_tile);
     }
 
     pub fn rail(&mut self, location: Coord2) {
-        self.tiles
-            .insert(location,
-                    Tile::Rails {
-                        rail_coords: HashSet::new(),
-                        orientation: Orientation::Horizontal,
-                        is_station: false,
-                    });
+        let rail_tile = Tile::Rails {
+            rails_pos: HashSet::new(),
+            orientation: Orientation::Horizontal,
+            is_station: false,
+        };
+        self.tiles.insert(location, rail_tile);
     }
 
     pub fn get(&self, location: Coord2) -> Option<&Tile> {
@@ -133,22 +152,18 @@ impl TileMap {
     }
 
     pub fn can_pave(&self, location: Coord2) -> bool {
-        let mut has_road_neighbour = false;
-        for neighbour in location.neighbours() {
-            // Must not be:
-            // - Building
-            // - Entryway
-            // - Railway
-            // At least for now, anything new we add will also count.
-            match self.get(neighbour) {
-                None => {}
-                Some(&Tile::Paving { .. }) => {
-                    has_road_neighbour = true;
-                }
-                _ => return false,
-            }
-        }
-        has_road_neighbour
+        !self.neighbouring_pavings(location).is_empty()
+    }
+
+    fn neighbouring_pavings(&self, location: Coord2) -> HashSet<Coord2> {
+        location
+            .neighbours()
+            .into_iter()
+            .filter(|l| match self.get(*l) {
+                        Some(&Tile::Paving { .. }) => true,
+                        _ => false,
+                    })
+            .collect()
     }
 
     // pub fn can_rail(&self, location: Coord2) -> bool {}

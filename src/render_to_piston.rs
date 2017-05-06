@@ -32,7 +32,7 @@ impl RenderToPiston {
         let tile_map = self.tile_map.read().unwrap();
         self.window
             .draw_2d(e, |c, g| for y in 0..tile_map.height() {
-                clear([0.9; 4], g);
+                clear([0.95; 4], g);
                 for x in 0..tile_map.width() {
                     let l = Coord2 { x, y };
                     if let Some(tile) = tile_map.get(l) {
@@ -144,7 +144,7 @@ impl RenderToPiston {
                           g);
             }
             Orientation::Horizontal => {
-                for x2 in 0..PPU {
+                for x2 in 0..(PPU - 1) {
                     if x2 % 2 == 0 {
                         rectangle([0.0, 0.0, 0.0, 0.7],
                                   [(x + x2) as f64, y as f64, 1.0, PPU as f64],
