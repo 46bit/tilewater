@@ -1,0 +1,9 @@
+[package]
+name = "tilewater"
+version = "0.1.0"
+authors = ["Michael Mokrysz <hi@46b.it>"]
+
+[dependencies]
+clap = "2.23.1"
+rand = "0.3"
+piston_window = "0.61.0"
