@@ -143,30 +143,58 @@ impl TileMap {
         };
         match tile_cloned {
             Tile::Building { entryway_pos, .. } => {
-                // Delete building and entrance.
-                self.tiles.remove(&location);
-                self.tiles.remove(&entryway_pos);
+                self.delete_building(location, entryway_pos);
                 // @TODO: Remove entryway record from paved tile.
             }
             Tile::Entrance { building_pos, .. } => {
-                // Delete entrance and building.
-                self.tiles.remove(&location);
-                self.tiles.remove(&building_pos);
-                // @TODO: Remove entryway record from paved tile.
-                // @TODO: Merge with building implementation.
+                self.delete_building(building_pos, location);
             }
-            Tile::Paving { entryways_pos, .. } => {
+            Tile::Paving {
+                entryways_pos,
+                pavings_pos,
+            } => {
                 // Delete entrances, their buildings and this paving.
                 for entryway_pos in entryways_pos {
                     self.delete(entryway_pos);
                 }
+                // Remove record from neighbouring paved tiles.
+                for paving_pos in pavings_pos {
+                    match self.tiles.get_mut(&paving_pos) {
+                        Some(&mut Tile::Paving { ref mut pavings_pos, .. }) => {
+                            pavings_pos.remove(&location);
+                        }
+                        _ => panic!("Known paving did not exist."),
+                    }
+                }
+                // Remove paving.
                 self.tiles.remove(&location);
-                // @TODO: Remove record from neighbouring paved tiles.
             }
             Tile::Rails { .. } => {
                 unimplemented!();
             }
         }
+    }
+
+    fn delete_building(&mut self, building_pos: Coord2, entryway_pos: Coord2) {
+        // Remove record of building entryway from its access paving.
+        let paving_pos = match self.tiles.get(&entryway_pos) {
+            Some(&Tile::Entrance { road_pos, .. }) => road_pos,
+            _ => panic!("Known entryway did not exist."),
+        };
+        match self.tiles.get_mut(&paving_pos) {
+            Some(&mut Tile::Paving { ref mut entryways_pos, .. }) => {
+                entryways_pos.remove(&entryway_pos);
+            }
+            _ => {
+                // Somewhat more plausible to reach this case than warrants an
+                // unreachable.
+                panic!("Known paving did not exist.");
+            }
+        }
+
+        // Remove building and entryway.
+        self.tiles.remove(&building_pos);
+        self.tiles.remove(&entryway_pos);
     }
 
     pub fn get(&self, location: Coord2) -> Option<&Tile> {
