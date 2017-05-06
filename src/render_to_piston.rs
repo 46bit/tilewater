@@ -42,7 +42,7 @@ impl RenderToPiston {
                 }
             }
 
-            if let Event::Render(_) = e {
+            if let Event::Update(_) = e {
                 match route(&self.map.read().unwrap(), self.agent, self.agent_goal) {
                     Route::Tiles(path) => {
                         self.agent = path[1];
@@ -67,7 +67,9 @@ impl RenderToPiston {
                 }
             }
 
-            self.draw(&e);
+            if let Event::Render(_) = e {
+                self.draw(&e);
+            }
         }
     }
 
@@ -139,7 +141,7 @@ impl RenderToPiston {
                 }
                 Self::draw_cursor(c, g, map.cursor);
                 // @TODO: Remove.
-                Self::draw_cursor(c, g, agent_pos);
+                Self::draw_agent(c, g, agent_pos);
             });
     }
 
@@ -150,6 +152,15 @@ impl RenderToPiston {
                   [x as f64, y as f64, PPU as f64, PPU as f64],
                   c.transform,
                   g);
+    }
+
+    fn draw_agent(c: Context, g: &mut G2d, agent_pos: Coord2) {
+        let x = (agent_pos.x * PPU + (PPU / 2)) as f64 - 2.0;
+        let y = (agent_pos.y * PPU + (PPU / 2)) as f64 - 2.0;
+        ellipse([0.0, 0.0, 0.0, 0.3],
+                [x as f64, y as f64, 4.0, 4.0],
+                c.transform,
+                g);
     }
 
     fn draw_tile(c: Context, g: &mut G2d, _: Map, l: Coord2, tile: &Tile) {

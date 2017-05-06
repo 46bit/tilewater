@@ -16,10 +16,11 @@ use tilewater::*;
 fn main() {
     //let mut rng: Box<Rng> = Box::new(OsRng::new().expect("Could not start the PRNG."));
 
-    let window: PistonWindow = WindowSettings::new("Tilewater", [800, 800])
+    let mut window: PistonWindow = WindowSettings::new("Tilewater", [800, 800])
         .exit_on_esc(true)
         .build()
         .unwrap();
+    window.set_ups(10);
 
     let mut map = Map::new(Coord2 { x: 80, y: 30 });
 
