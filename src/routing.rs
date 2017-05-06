@@ -127,6 +127,7 @@ fn reconstruct_path(came_from: HashMap<Coord2, Coord2>, mut current_pos: Coord2)
         current_pos = came_from[&current_pos];
         path.push(current_pos);
     }
+    path.reverse();
     path
 }
 

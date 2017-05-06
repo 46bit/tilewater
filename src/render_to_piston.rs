@@ -1,5 +1,6 @@
 use std::sync::{Arc, RwLock};
 use piston_window::*;
+use rand::*;
 use super::*;
 
 const PPU: u64 = 10;
@@ -15,13 +16,22 @@ pub enum Cmd {
 }
 
 pub struct RenderToPiston {
+    agent: Coord2,
+    agent_goal: Coord2,
     window: PistonWindow,
     map: Arc<RwLock<Map>>,
 }
 
 impl RenderToPiston {
     pub fn new(window: PistonWindow, map: Arc<RwLock<Map>>) -> RenderToPiston {
-        RenderToPiston { window, map }
+        let agent = Coord2 { x: 40, y: 2 };
+        let agent_goal = Coord2 { x: 40, y: 8 };
+        RenderToPiston {
+            agent,
+            agent_goal,
+            window,
+            map,
+        }
     }
 
     pub fn render_loop(&mut self) {
@@ -31,6 +41,32 @@ impl RenderToPiston {
                     self.char_command(c);
                 }
             }
+
+            if let Event::Render(_) = e {
+                match route(&self.map.read().unwrap(), self.agent, self.agent_goal) {
+                    Route::Tiles(path) => {
+                        self.agent = path[1];
+                    }
+                    Route::Complete => {
+                        let mut rng = StdRng::new().unwrap();
+                        loop {
+                            self.agent_goal = Coord2 {
+                                x: rng.gen_range(0, 80),
+                                y: rng.gen_range(0, 80),
+                            };
+                            let map = self.map.read().unwrap();
+                            if map.get(self.agent_goal).is_some() &&
+                               map.get(self.agent_goal)
+                                   .and_then(Tile::as_rails)
+                                   .is_none() {
+                                break;
+                            }
+                        }
+                    }
+                    Route::NotRouteable => unreachable!(),
+                }
+            }
+
             self.draw(&e);
         }
     }
@@ -91,6 +127,7 @@ impl RenderToPiston {
 
     fn draw(&mut self, e: &Event) {
         let map = self.map.read().unwrap();
+        let agent_pos = self.agent;
         self.window
             .draw_2d(e, |c, g| for y in 0..map.height() {
                 clear([0.95; 4], g);
@@ -101,6 +138,8 @@ impl RenderToPiston {
                     }
                 }
                 Self::draw_cursor(c, g, map.cursor);
+                // @TODO: Remove.
+                Self::draw_cursor(c, g, agent_pos);
             });
     }
 
