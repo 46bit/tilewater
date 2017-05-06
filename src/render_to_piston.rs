@@ -11,6 +11,7 @@ pub enum Cmd {
     Right,
     Pave,
     Build(Building),
+    Delete,
 }
 
 pub struct RenderToPiston {
@@ -35,11 +36,14 @@ impl RenderToPiston {
     }
 
     fn char_command(&mut self, c: char) {
+        // @TODO: Ascertain whether these codes are macOS-specific.
+        // @TODO: Restructure this around returning Option from entirety.
         let cmd = match c {
             '\u{f700}' => Cmd::Up,
             '\u{f701}' => Cmd::Down,
             '\u{f702}' => Cmd::Left,
             '\u{f703}' => Cmd::Right,
+            '\u{f728}' => Cmd::Delete,
             ' ' => Cmd::Pave,
             c => {
                 match Building::from_code(c) {
@@ -65,6 +69,10 @@ impl RenderToPiston {
             }
             Cmd::Right => {
                 tile_map.cursor.x += 1;
+            }
+            Cmd::Delete => {
+                let pos = tile_map.cursor;
+                tile_map.delete(pos);
             }
             Cmd::Pave => {
                 let pos = tile_map.cursor;

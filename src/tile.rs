@@ -133,6 +133,42 @@ impl TileMap {
         self.tiles.insert(location, rail_tile);
     }
 
+    pub fn delete(&mut self, location: Coord2) {
+        let tile_cloned = {
+            let tile = match self.get(location) {
+                Some(tile) => tile.clone(),
+                None => return,
+            };
+            tile.clone()
+        };
+        match tile_cloned {
+            Tile::Building { entryway_pos, .. } => {
+                // Delete building and entrance.
+                self.tiles.remove(&location);
+                self.tiles.remove(&entryway_pos);
+                // @TODO: Remove entryway record from paved tile.
+            }
+            Tile::Entrance { building_pos, .. } => {
+                // Delete entrance and building.
+                self.tiles.remove(&location);
+                self.tiles.remove(&building_pos);
+                // @TODO: Remove entryway record from paved tile.
+                // @TODO: Merge with building implementation.
+            }
+            Tile::Paving { entryways_pos, .. } => {
+                // Delete entrances, their buildings and this paving.
+                for entryway_pos in entryways_pos {
+                    self.delete(entryway_pos);
+                }
+                self.tiles.remove(&location);
+                // @TODO: Remove record from neighbouring paved tiles.
+            }
+            Tile::Rails { .. } => {
+                unimplemented!();
+            }
+        }
+    }
+
     pub fn get(&self, location: Coord2) -> Option<&Tile> {
         self.tiles.get(&location)
     }
