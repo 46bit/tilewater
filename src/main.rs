@@ -5,80 +5,84 @@ extern crate rand;
 extern crate tilewater;
 extern crate piston_window;
 
-use std::io::prelude::*;
-use std::thread;
-use std::cmp::{min, max};
-use std::time::Duration;
+//use std::thread;
+//use std::time::Duration;
 use std::sync::{Arc, RwLock};
-
 //use clap::{Arg, App};
-use rand::{Rng, OsRng};
+//use rand::{Rng, OsRng};
 use piston_window::*;
 use tilewater::*;
 
 fn main() {
-    let mut rng: Box<Rng> = Box::new(OsRng::new().expect("Could not start the PRNG."));
+    //let mut rng: Box<Rng> = Box::new(OsRng::new().expect("Could not start the PRNG."));
 
-    let mut window: PistonWindow = WindowSettings::new("Hello Piston!", [640, 480])
+    let window: PistonWindow = WindowSettings::new("Tilewater", [800, 800])
         .exit_on_esc(true)
         .build()
         .unwrap();
 
     let mut tile_map = TileMap::new(Coord2 { x: 80, y: 30 });
 
-    for y in 0...29 {
+    for y in 1...30 {
         let p = Coord2 { x: 40, y: y };
         if tile_map.can_pave(p) {
             tile_map.pave(p);
         }
     }
     for x in 40...48 {
-        let p = Coord2 { x: x, y: 2 };
+        let p = Coord2 { x: x, y: 3 };
         if tile_map.can_pave(p) {
             tile_map.pave(p);
         }
     }
-    for y in 2...14 {
+    for y in 3...15 {
         let p = Coord2 { x: 48, y: y };
         if tile_map.can_pave(p) {
             tile_map.pave(p);
         }
     }
     for x in 48...55 {
-        let p = Coord2 { x: x, y: 5 };
+        let p = Coord2 { x: x, y: 6 };
         if tile_map.can_pave(p) {
             tile_map.pave(p);
         }
     }
-    for y in 5...19 {
+    for y in 6...20 {
         let p = Coord2 { x: 55, y: y };
         if tile_map.can_pave(p) {
             tile_map.pave(p);
         }
     }
-    for x in 55...84 {
-        let p = Coord2 { x: x, y: 8 };
+    for x in 55...68 {
+        let p = Coord2 { x: x, y: 9 };
         if tile_map.can_pave(p) {
             tile_map.pave(p);
         }
     }
     for x in 40...64 {
-        let p = Coord2 { x: x, y: 19 };
+        let p = Coord2 { x: x, y: 20 };
         if tile_map.can_pave(p) {
             tile_map.pave(p);
         }
     }
 
+    for x in 0...79 {
+        let c = Coord2 { x: x, y: 0 };
+        //if tile_map.can_rail(c) {
+        tile_map.rail(c);
+        //}
+    }
+
     let bs = vec![(42, 4, 'f'),
                   (42, 6, 'f'),
                   (38, 9, 'f'),
-                  (42, 9, 't'),
+                  (42, 9, 's'),
                   (42, 11, 'f'),
                   (42, 13, 'f'),
                   (42, 15, 'f'),
                   (42, 17, 'h'),
                   (42, 19, 'h'),
-                  (38, 17, 's'),
+                  (38, 17, 'g'),
                   (44, 4, 'h'),
                   (46, 4, 'h'),
                   (46, 7, 'h'),
@@ -93,8 +97,8 @@ fn main() {
                   (50, 3, 'h'),
                   (52, 3, 'h'),
                   (54, 3, 'h'),
-                  (57, 6, 't'),
-                  (59, 6, 's'),
+                  (57, 6, 's'),
+                  (59, 6, 'g'),
                   (57, 10, 'h'),
                   (59, 10, 'h'),
                   (57, 12, 'h'),
@@ -107,17 +111,15 @@ fn main() {
                   (51, 17, 'h'),
                   (53, 17, 'h')];
     for b in bs {
-        let c = Coord2 { x: b.0, y: b.1 };
+        let c = Coord2 { x: b.0, y: b.1 + 1 };
         if tile_map.can_build(c) {
-            tile_map.build(c, Building::new(b.2));
+            tile_map.build(c, Building::from_code(b.2).unwrap());
         }
     }
-    println!("{}", tile_map);
+    //println!("{}", tile_map);
 
-    let mut tile_map = Arc::new(RwLock::new(tile_map));
-
-    let mut renderer = RenderToPiston::new(window, tile_map);
-    renderer.render_loop();
+    let tile_map = Arc::new(RwLock::new(tile_map));
+    RenderToPiston::new(window, tile_map).render_loop();
 
     // for i in 0..20 {
     //     let p = Coord2 { x: 40, y: i + 1 };

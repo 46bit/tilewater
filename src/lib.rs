@@ -213,23 +213,40 @@ impl IntoIterator for Path {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Building {
-    code: char,
+pub enum Building {
+    House,
+    Saloon,
+    Factory,
+    GeneralStore,
+    TrainStation,
 }
 
 impl Building {
-    pub fn new(code: char) -> Building {
-        Building { code: code }
+    pub fn from_code(code: char) -> Option<Building> {
+        match code {
+            'h' => Some(Building::House),
+            's' => Some(Building::Saloon),
+            'f' => Some(Building::Factory),
+            'g' => Some(Building::GeneralStore),
+            'r' => Some(Building::TrainStation),
+            _ => None,
+        }
     }
 
     pub fn code(&self) -> char {
-        self.code
+        match *self {
+            Building::House => 'h',
+            Building::Saloon => 's',
+            Building::Factory => 'f',
+            Building::GeneralStore => 'g',
+            Building::TrainStation => 'r',
+        }
     }
 }
 
 impl fmt::Display for Building {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.code)
+        write!(f, "{}", self.code())
     }
 }
 

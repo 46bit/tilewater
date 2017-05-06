@@ -98,6 +98,16 @@ impl TileMap {
                     });
     }
 
+    pub fn rail(&mut self, location: Coord2) {
+        self.tiles
+            .insert(location,
+                    Tile::Rails {
+                        rail_coords: HashSet::new(),
+                        orientation: Orientation::Horizontal,
+                        is_station: false,
+                    });
+    }
+
     pub fn get(&self, location: Coord2) -> Option<&Tile> {
         self.tiles.get(&location)
     }
@@ -140,6 +150,8 @@ impl TileMap {
         }
         has_road_neighbour
     }
+
+    // pub fn can_rail(&self, location: Coord2) -> bool {}
 
     fn nsew_nearby_roads(&self, location: Coord2) -> Vec<Coord2> {
         let mut locations = Vec::with_capacity(4);
