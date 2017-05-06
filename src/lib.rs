@@ -3,10 +3,12 @@ extern crate piston_window;
 
 mod tile;
 mod map;
+mod routing;
 mod render_to_piston;
 
 pub use tile::*;
 pub use map::*;
+pub use routing::*;
 pub use render_to_piston::*;
 
 use std::fmt;
