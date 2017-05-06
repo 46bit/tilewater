@@ -2,9 +2,11 @@ extern crate rand;
 extern crate piston_window;
 
 mod tile;
+mod map;
 mod render_to_piston;
 
 pub use tile::*;
+pub use map::*;
 pub use render_to_piston::*;
 
 use std::fmt;

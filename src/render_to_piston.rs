@@ -16,12 +16,12 @@ pub enum Cmd {
 
 pub struct RenderToPiston {
     window: PistonWindow,
-    tile_map: Arc<RwLock<TileMap>>,
+    map: Arc<RwLock<Map>>,
 }
 
 impl RenderToPiston {
-    pub fn new(window: PistonWindow, tile_map: Arc<RwLock<TileMap>>) -> RenderToPiston {
-        RenderToPiston { window, tile_map }
+    pub fn new(window: PistonWindow, map: Arc<RwLock<Map>>) -> RenderToPiston {
+        RenderToPiston { window, map }
     }
 
     pub fn render_loop(&mut self) {
@@ -56,51 +56,51 @@ impl RenderToPiston {
             }
         };
 
-        let mut tile_map = self.tile_map.write().unwrap();
+        let mut map = self.map.write().unwrap();
         match cmd {
             Cmd::Up => {
-                tile_map.cursor.y = tile_map.cursor.y.saturating_sub(1);
+                map.cursor.y = map.cursor.y.saturating_sub(1);
             }
             Cmd::Down => {
-                tile_map.cursor.y += 1;
+                map.cursor.y += 1;
             }
             Cmd::Left => {
-                tile_map.cursor.x = tile_map.cursor.x.saturating_sub(1);
+                map.cursor.x = map.cursor.x.saturating_sub(1);
             }
             Cmd::Right => {
-                tile_map.cursor.x += 1;
+                map.cursor.x += 1;
             }
             Cmd::Delete => {
-                let pos = tile_map.cursor;
-                tile_map.delete(pos);
+                let pos = map.cursor;
+                map.delete(pos);
             }
             Cmd::Pave => {
-                let pos = tile_map.cursor;
-                if tile_map.can_pave(pos) {
-                    tile_map.pave(pos);
+                let pos = map.cursor;
+                if map.can_pave(pos) {
+                    map.pave(pos);
                 }
             }
             Cmd::Build(building) => {
-                let pos = tile_map.cursor;
-                if tile_map.can_build(pos) {
-                    tile_map.build(pos, building);
+                let pos = map.cursor;
+                if map.can_build(pos) {
+                    map.build(pos, building);
                 }
             }
         }
     }
 
     fn draw(&mut self, e: &Event) {
-        let tile_map = self.tile_map.read().unwrap();
+        let map = self.map.read().unwrap();
         self.window
-            .draw_2d(e, |c, g| for y in 0..tile_map.height() {
+            .draw_2d(e, |c, g| for y in 0..map.height() {
                 clear([0.95; 4], g);
-                for x in 0..tile_map.width() {
+                for x in 0..map.width() {
                     let l = Coord2 { x, y };
-                    if let Some(tile) = tile_map.get(l) {
-                        Self::draw_tile(c, g, tile_map.clone(), l, tile);
+                    if let Some(tile) = map.get(l) {
+                        Self::draw_tile(c, g, map.clone(), l, tile);
                     }
                 }
-                Self::draw_cursor(c, g, tile_map.cursor);
+                Self::draw_cursor(c, g, map.cursor);
             });
     }
 
@@ -113,7 +113,7 @@ impl RenderToPiston {
                   g);
     }
 
-    fn draw_tile(c: Context, g: &mut G2d, _: TileMap, l: Coord2, tile: &Tile) {
+    fn draw_tile(c: Context, g: &mut G2d, _: Map, l: Coord2, tile: &Tile) {
         match *tile {
             Tile::Building(BuildingTile { ref building, .. }) => {
                 Self::draw_building(c, g, l, building)

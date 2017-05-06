@@ -21,55 +21,55 @@ fn main() {
         .build()
         .unwrap();
 
-    let mut tile_map = TileMap::new(Coord2 { x: 80, y: 30 });
+    let mut map = Map::new(Coord2 { x: 80, y: 30 });
 
     for y in 1...30 {
         let p = Coord2 { x: 40, y: y };
-        if tile_map.can_pave(p) {
-            tile_map.pave(p);
+        if map.can_pave(p) {
+            map.pave(p);
         }
     }
     for x in 40...48 {
         let p = Coord2 { x: x, y: 3 };
-        if tile_map.can_pave(p) {
-            tile_map.pave(p);
+        if map.can_pave(p) {
+            map.pave(p);
         }
     }
     for y in 3...15 {
         let p = Coord2 { x: 48, y: y };
-        if tile_map.can_pave(p) {
-            tile_map.pave(p);
+        if map.can_pave(p) {
+            map.pave(p);
         }
     }
     for x in 48...55 {
         let p = Coord2 { x: x, y: 6 };
-        if tile_map.can_pave(p) {
-            tile_map.pave(p);
+        if map.can_pave(p) {
+            map.pave(p);
         }
     }
     for y in 6...20 {
         let p = Coord2 { x: 55, y: y };
-        if tile_map.can_pave(p) {
-            tile_map.pave(p);
+        if map.can_pave(p) {
+            map.pave(p);
         }
     }
     for x in 55...68 {
         let p = Coord2 { x: x, y: 9 };
-        if tile_map.can_pave(p) {
-            tile_map.pave(p);
+        if map.can_pave(p) {
+            map.pave(p);
         }
     }
     for x in 40...64 {
         let p = Coord2 { x: x, y: 20 };
-        if tile_map.can_pave(p) {
-            tile_map.pave(p);
+        if map.can_pave(p) {
+            map.pave(p);
         }
     }
 
     for x in 0...79 {
         let c = Coord2 { x: x, y: 0 };
-        //if tile_map.can_rail(c) {
-        tile_map.rail(c);
+        //if map.can_rail(c) {
+        map.rail(c);
         //}
     }
 
@@ -112,14 +112,14 @@ fn main() {
                   (53, 17, 'h')];
     for b in bs {
         let c = Coord2 { x: b.0, y: b.1 + 1 };
-        if tile_map.can_build(c) {
-            tile_map.build(c, Building::from_code(b.2).unwrap());
+        if map.can_build(c) {
+            map.build(c, Building::from_code(b.2).unwrap());
         }
     }
-    //println!("{}", tile_map);
+    //println!("{}", map);
 
-    let tile_map = Arc::new(RwLock::new(tile_map));
-    RenderToPiston::new(window, tile_map).render_loop();
+    let map = Arc::new(RwLock::new(map));
+    RenderToPiston::new(window, map).render_loop();
 
     // for i in 0..20 {
     //     let p = Coord2 { x: 40, y: i + 1 };
