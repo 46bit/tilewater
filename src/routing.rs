@@ -9,30 +9,6 @@ pub enum Route {
     Tiles(Vec<Coord2>),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-struct FScoreItem<T>
-    where T: PartialEq + Eq
-{
-    f_score: i64,
-    item: T,
-}
-
-impl<T> PartialOrd for FScoreItem<T>
-    where T: PartialEq + Eq
-{
-    fn partial_cmp(&self, other: &FScoreItem<T>) -> Option<Ordering> {
-        Some(self.f_score.cmp(&other.f_score))
-    }
-}
-
-impl<T> Ord for FScoreItem<T>
-    where T: PartialEq + Eq
-{
-    fn cmp(&self, other: &FScoreItem<T>) -> Ordering {
-        self.f_score.cmp(&other.f_score)
-    }
-}
-
 /// Implementation of A* search on `Map`.
 ///
 /// Derived from https://en.wikipedia.org/wiki/A*_search_algorithm#Pseudocode
@@ -94,6 +70,51 @@ pub fn route(map: &Map, start_pos: Coord2, goal_pos: Coord2) -> Route {
     }
 
     Route::NotRouteable
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RouteDirection {
+    NotRouteable,
+    Complete,
+    Direction(Direction),
+}
+
+pub fn direction_of_route(map: &Map, start_pos: Coord2, goal_pos: Coord2) -> RouteDirection {
+    match route(map, start_pos, goal_pos) {
+        Route::NotRouteable => RouteDirection::NotRouteable,
+        Route::Complete => RouteDirection::Complete,
+        Route::Tiles(route) => {
+            // Find direction from route[0] to route[1].
+            match Direction::between_coord2s(route[0], route[1]) {
+                Some(direction) => RouteDirection::Direction(direction),
+                None => RouteDirection::NotRouteable,
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct FScoreItem<T>
+    where T: PartialEq + Eq
+{
+    f_score: i64,
+    item: T,
+}
+
+impl<T> PartialOrd for FScoreItem<T>
+    where T: PartialEq + Eq
+{
+    fn partial_cmp(&self, other: &FScoreItem<T>) -> Option<Ordering> {
+        Some(self.f_score.cmp(&other.f_score))
+    }
+}
+
+impl<T> Ord for FScoreItem<T>
+    where T: PartialEq + Eq
+{
+    fn cmp(&self, other: &FScoreItem<T>) -> Ordering {
+        self.f_score.cmp(&other.f_score)
+    }
 }
 
 fn tile_neighbours(tile: &Tile) -> Vec<Coord2> {

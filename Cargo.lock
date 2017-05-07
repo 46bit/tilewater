@@ -5,6 +5,7 @@ dependencies = [
  "clap 2.24.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "piston_window 0.61.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.3.15 (registry+https://github.com/rust-lang/crates.io-index)",
+ "uuid 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -890,6 +891,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "uuid"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "vec_map"
 version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1116,6 +1122,7 @@ dependencies = [
 "checksum unicode-segmentation 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "18127285758f0e2c6cf325bb3f3d138a12fee27de4f23e146cd6a179f26c2cf3"
 "checksum unicode-width 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "bf3a113775714a22dcb774d8ea3655c53a32debae63a063acc00a91cc586245f"
 "checksum user32-sys 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "6717129de5ac253f5642fc78a51d0c7de6f9f53d617fc94e9bae7f6e71cf5504"
+"checksum uuid 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "7cfec50b0842181ba6e713151b72f4ec84a6a7e2c9c8a8a3ffc37bb1cd16b231"
 "checksum vec_map 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f8cdc8b93bd0198ed872357fb2e667f7125646b1762f16d60b2c96350d361897"
 "checksum vecmath 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "91b28177904486404916c2aee33e61ee60445d246ff047fb4196461a3f372ff8"
 "checksum wayland-client 0.7.8 (registry+https://github.com/rust-lang/crates.io-index)" = "a4b2b9876c6c97ece4f1ac699b5172550df443f36942fdcdcc27768c8f1437b4"

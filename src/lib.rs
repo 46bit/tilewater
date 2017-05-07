@@ -1,13 +1,16 @@
 extern crate rand;
 extern crate piston_window;
+extern crate uuid;
 
 mod tile;
 mod map;
+mod agents;
 mod routing;
 mod render_to_piston;
 
 pub use tile::*;
 pub use map::*;
+pub use agents::*;
 pub use routing::*;
 pub use render_to_piston::*;
 
@@ -127,6 +130,41 @@ impl Orientation {
             Coord2 { x: 0, y: 1 }
         } else {
             Coord2 { x: 1, y: 0 }
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Direction {
+    North,
+    East,
+    South,
+    West,
+}
+
+impl Direction {
+    pub fn between_coord2s(a: Coord2, b: Coord2) -> Option<Direction> {
+        if (a.x == b.x && a.y == b.y) || (a.x != b.x && a.y != b.y) {
+            None
+        } else if a.x > b.x {
+            Some(Direction::West)
+        } else if a.x < b.x {
+            Some(Direction::East)
+        } else if a.y > b.y {
+            Some(Direction::North)
+        } else if a.y < b.y {
+            Some(Direction::South)
+        } else {
+            unreachable!();
+        }
+    }
+
+    pub fn as_offset(&self) -> (i64, i64) {
+        match *self {
+            Direction::North => (0, -1),
+            Direction::East => (1, 0),
+            Direction::South => (0, 1),
+            Direction::West => (-1, 0),
         }
     }
 }
