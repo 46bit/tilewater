@@ -157,24 +157,38 @@ impl Decider for ResidentDecider {
                 }
             }
             ResidentState::AtHome => {
-                let go_drinking = rng.gen_weighted_bool(60);
-                let go_shopping = rng.gen_weighted_bool(40);
+                let go_drinking = map.buildings.contains_key(&Building::Saloon) &&
+                                  rng.gen_weighted_bool(60);
+                let go_shopping = map.buildings.contains_key(&Building::GeneralStore) &&
+                                  rng.gen_weighted_bool(40);
                 if go_shopping == go_drinking {
                     (ResidentState::AtHome, AgentAction::Idle)
                 } else if go_shopping {
                     let home_tile = map.get(self.home).and_then(Tile::as_building).unwrap();
                     let start_direction =
                         Direction::between_coord2s(self.home, home_tile.entryway_pos).unwrap();
-                    // @TODO: REMOVE HARDCODING.
-                    (ResidentState::GoingToShop(Coord2 { x: 59, y: 7 }),
-                     AgentAction::Move(start_direction))
+                    match route_to_any(map,
+                                       self.home,
+                                       map.buildings[&Building::GeneralStore].clone()) {
+                        Route::Tiles(route) => {
+                            let shop_pos = route.last().unwrap();
+                            (ResidentState::GoingToShop(*shop_pos),
+                             AgentAction::Move(start_direction))
+                        }
+                        _ => panic!("No closest general store decided."),
+                    }
                 } else {
                     let home_tile = map.get(self.home).and_then(Tile::as_building).unwrap();
                     let start_direction =
                         Direction::between_coord2s(self.home, home_tile.entryway_pos).unwrap();
-                    // @TODO: REMOVE HARDCODING.
-                    (ResidentState::GoingToDrink(Coord2 { x: 42, y: 10 }),
-                     AgentAction::Move(start_direction))
+                    match route_to_any(map, self.home, map.buildings[&Building::Saloon].clone()) {
+                        Route::Tiles(route) => {
+                            let saloon_pos = route.last().unwrap();
+                            (ResidentState::GoingToDrink(*saloon_pos),
+                             AgentAction::Move(start_direction))
+                        }
+                        _ => panic!("No closest general store decided."),
+                    }
                 }
             }
             ResidentState::GoingToShop(shop_pos) => {

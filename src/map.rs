@@ -6,7 +6,7 @@ pub struct Map {
     pub cursor: Coord2,
     dimensions: Coord2,
     tiles: HashMap<Coord2, Tile>,
-    buildings: HashMap<Building, Vec<Coord2>>,
+    pub buildings: HashMap<Building, Vec<Coord2>>,
 }
 
 impl Map {
