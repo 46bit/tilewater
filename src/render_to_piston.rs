@@ -105,21 +105,24 @@ impl RenderToPiston {
 
     fn draw(&mut self, e: &Event) {
         let map = self.map.read().unwrap();
-        let render_info = self.agents.render_info();
+        let agent_subunit_positions = self.agents.agent_subunit_positions();
+
         self.window
-            .draw_2d(e, |c, g| for y in 0..map.height() {
+            .draw_2d(e, |c, g| {
                 clear([0.95; 4], g);
-                for x in 0..map.width() {
-                    let l = Coord2 { x, y };
-                    if let Some(tile) = map.get(l) {
-                        Self::draw_tile(c, g, map.clone(), l, tile);
+                for y in 0..map.height() {
+                    for x in 0..map.width() {
+                        let l = Coord2 { x, y };
+                        if let Some(tile) = map.get(l) {
+                            Self::draw_tile(c, g, map.clone(), l, tile);
+                        }
                     }
                 }
+
                 Self::draw_cursor(c, g, map.cursor);
 
-                for agent_render_info in &render_info {
-                    let &((x, y), co) = agent_render_info;
-                    Self::draw_agent(c, g, (x, y), co);
+                for agent_subunit_position in agent_subunit_positions {
+                    Self::draw_agent(c, g, agent_subunit_position);
                 }
             });
     }
@@ -133,11 +136,14 @@ impl RenderToPiston {
                   g);
     }
 
-    fn draw_agent(c: Context, g: &mut G2d, pos: (f64, f64), co: Color) {
+    fn draw_agent(c: Context, g: &mut G2d, pos: (f64, f64)) {
         let ppuf = PPU as f64;
         let x = pos.0 * ppuf + (ppuf / 2.0) - 2.0;
         let y = pos.1 * ppuf + (ppuf / 2.0) - 2.0;
-        ellipse(co, [x, y, 4.0, 4.0], c.transform, g);
+        ellipse([42.0 / 255.0, 201.0 / 255.0, 111.0 / 255.0, 1.0],
+                [x, y, 4.0, 4.0],
+                c.transform,
+                g);
     }
 
     fn draw_tile(c: Context, g: &mut G2d, _: Map, l: Coord2, tile: &Tile) {

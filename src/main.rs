@@ -21,9 +21,10 @@ fn main() {
         .build()
         .unwrap();
 
-    let ups = 10;
+    let ups = 40;
     window.set_ups(ups);
-    let mut agents = Agents::new(ups);
+    window.set_max_fps(60);
+    let mut agents = Agents::new(ups / 5);
 
     let mut map = Map::new(Coord2 { x: 80, y: 30 });
 
@@ -124,7 +125,7 @@ fn main() {
                 let decider = ResidentDecider::new(c);
                 let agent = Agent::new(Coord2 { x: 40, y: 2 }, Box::new(decider));
                 agents.insert(agent);
-                o1 = false;
+                //o1 = false;
             }
         }
     }
