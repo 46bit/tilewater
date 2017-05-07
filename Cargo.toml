@@ -7,7 +7,7 @@ authors = ["Michael Mokrysz <hi@46b.it>"]
 clap = "2.23.1"
 rand = "0.3"
 piston_window = "0.61.0"
-uuid = "0.4"
+uuid = { version = "0.4", features = ["v4"] }
 
 [[bin]]
 name = "tilewater"

@@ -20,6 +20,10 @@ impl Agents {
         }
     }
 
+    pub fn insert(&mut self, agent: Agent) {
+        self.agents.insert(agent.state.id, agent);
+    }
+
     pub fn decide(&mut self, map: &Map) {
         for agent in self.agents.values_mut() {
             let agent_state_clone = agent.state.clone();
@@ -74,6 +78,21 @@ pub struct Agent {
     state: AgentState,
     subunit_position: (f64, f64),
     decider: Box<Decider>,
+}
+
+impl Agent {
+    pub fn new(position: Coord2, decider: Box<Decider>) -> Agent {
+        Agent {
+            state: AgentState {
+                id: Uuid::new_v4(),
+                position: position,
+                // @TODO: Decide new action on instantiation or not?
+                action: AgentAction::Idle,
+            },
+            subunit_position: (position.x as f64, position.y as f64),
+            decider: decider,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
