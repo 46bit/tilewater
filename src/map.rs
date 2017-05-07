@@ -6,12 +6,14 @@ pub struct Map {
     pub cursor: Coord2,
     dimensions: Coord2,
     tiles: HashMap<Coord2, Tile>,
+    buildings: HashMap<Building, Vec<Coord2>>,
 }
 
 impl Map {
     pub fn new(dimensions: Coord2) -> Map {
         let cursor = Coord2 { x: 0, y: 0 };
         let mut tiles = HashMap::new();
+        let buildings = HashMap::new();
         // @TODO: Instead spawn a station on the railway track, and an entranceway
         // - and maybe a road tile attached the entranceway, if the roadless entryway
         // causes coding problems.
@@ -27,6 +29,7 @@ impl Map {
             cursor,
             dimensions,
             tiles,
+            buildings,
         }
     }
 
@@ -53,6 +56,10 @@ impl Map {
                                                entryway_pos: entryway_pos,
                                            });
         self.tiles.insert(location, building_tile);
+        self.buildings
+            .entry(building)
+            .or_insert_with(|| Vec::new())
+            .push(location);
 
         // Insert the new entrance.
         let entrance_tile = Tile::Entrance(EntranceTile {
@@ -158,7 +165,20 @@ impl Map {
             }
         }
 
-        // Remove building and entryway.
+        // Remove record of building.
+        let building = self.tiles
+            .get(&building_pos)
+            .and_then(Tile::as_building)
+            .unwrap()
+            .building;
+        let buildings_of_type = self.buildings.get_mut(&building).unwrap();
+        let index = buildings_of_type
+            .iter()
+            .position(|x| *x == building_pos)
+            .unwrap();
+        buildings_of_type.remove(index);
+
+        // Remove building and entryway tiles.
         self.tiles.remove(&building_pos);
         self.tiles.remove(&entryway_pos);
     }
