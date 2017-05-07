@@ -25,28 +25,36 @@ impl Agents {
     }
 
     pub fn decide(&mut self, map: &Map) {
+        println!("decide1");
         for agent in self.agents.values_mut() {
             let agent_state_clone = agent.state.clone();
-            agent.decider.decide_action(&agent_state_clone, map);
+            agent.state.action = agent.decider.decide_action(&agent_state_clone, map);
         }
+        println!("decide2");
     }
 
     pub fn update(&mut self, map: &Map) {
         self.ticks_this_unit += 1;
         for agent in self.agents.values_mut() {
             match agent.state.action {
-                AgentAction::Idle => {}
+                AgentAction::Idle => {
+                    println!("idel");
+                }
                 AgentAction::Move(direction) => {
                     let direction_offset = direction.as_offset();
+                    println!("{:?}", agent.subunit_position);
                     agent.subunit_position.0 += (direction_offset.0 as f64) /
                                                 (self.ticks_per_unit as f64);
                     agent.subunit_position.1 += (direction_offset.1 as f64) /
                                                 (self.ticks_per_unit as f64);
+                    println!("{:?}", agent.subunit_position);
                     if self.ticks_this_unit == self.ticks_per_unit {
                         agent.state.position.x =
                             ((agent.state.position.x as i64) + direction_offset.0) as u64;
                         agent.state.position.y =
                             ((agent.state.position.y as i64) + direction_offset.1) as u64;
+                        agent.subunit_position.0 = agent.state.position.x as f64;
+                        agent.subunit_position.1 = agent.state.position.y as f64;
                     }
                 }
             }
@@ -60,7 +68,7 @@ impl Agents {
     pub fn render_info(&mut self) -> Vec<((f64, f64), Color)> {
         self.agents
             .values()
-            .map(|a| (a.subunit_position, [0.0, 0.0, 0.0, 0.3]))
+            .map(|a| (a.subunit_position, [0.0, 0.0, 0.0, 1.0]))
             .collect()
     }
 }
@@ -125,10 +133,21 @@ pub struct ResidentDecider {
     state: ResidentState,
 }
 
+impl ResidentDecider {
+    pub fn new(home: Coord2) -> ResidentDecider {
+        ResidentDecider {
+            home: home,
+            work: None,
+            state: ResidentState::MovingIn,
+        }
+    }
+}
+
 impl Decider for ResidentDecider {
     fn decide_action(&mut self, agent: &AgentState, map: &Map) -> AgentAction {
         let (state, action) = match self.state {
             ResidentState::MovingIn => {
+                println!("{:?} {:?}", agent.position, self.home);
                 if agent.position == self.home {
                     (ResidentState::AtHome, AgentAction::Idle)
                 } else {
