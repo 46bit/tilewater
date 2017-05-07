@@ -93,6 +93,28 @@ pub fn direction_of_route(map: &Map, start_pos: Coord2, goal_pos: Coord2) -> Rou
     }
 }
 
+/// Find route to closest of several possible destinations.
+///
+/// This could be optimised with an adaptation of A* search.
+pub fn route_to_any(map: &Map, start_pos: Coord2, goals_pos: Vec<Coord2>) -> Route {
+    let mut routes = vec![];
+
+    for goal_pos in goals_pos {
+        match route(map, start_pos, goal_pos) {
+            Route::NotRouteable => {}
+            Route::Complete => return Route::Complete,
+            Route::Tiles(route) => {
+                routes.push(route);
+            }
+        }
+    }
+
+    match routes.into_iter().min_by(|x, y| x.len().cmp(&y.len())) {
+        Some(route) => Route::Tiles(route),
+        None => Route::NotRouteable,
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct FScoreItem<T>
     where T: PartialEq + Eq
