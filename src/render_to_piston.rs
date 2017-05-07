@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 use piston_window::*;
-use rand::*;
+use piston_window::types::Color;
 use super::*;
 
 const PPU: u64 = 10;
@@ -16,19 +16,15 @@ pub enum Cmd {
 }
 
 pub struct RenderToPiston {
-    agent: Coord2,
-    agent_goal: Coord2,
+    agents: Agents,
     window: PistonWindow,
     map: Arc<RwLock<Map>>,
 }
 
 impl RenderToPiston {
-    pub fn new(window: PistonWindow, map: Arc<RwLock<Map>>) -> RenderToPiston {
-        let agent = Coord2 { x: 40, y: 2 };
-        let agent_goal = Coord2 { x: 40, y: 8 };
+    pub fn new(agents: Agents, window: PistonWindow, map: Arc<RwLock<Map>>) -> RenderToPiston {
         RenderToPiston {
-            agent,
-            agent_goal,
+            agents,
             window,
             map,
         }
@@ -43,28 +39,8 @@ impl RenderToPiston {
             }
 
             if let Event::Update(_) = e {
-                match route(&self.map.read().unwrap(), self.agent, self.agent_goal) {
-                    Route::Tiles(path) => {
-                        self.agent = path[1];
-                    }
-                    Route::Complete => {
-                        let mut rng = StdRng::new().unwrap();
-                        loop {
-                            self.agent_goal = Coord2 {
-                                x: rng.gen_range(0, 80),
-                                y: rng.gen_range(0, 80),
-                            };
-                            let map = self.map.read().unwrap();
-                            if map.get(self.agent_goal).is_some() &&
-                               map.get(self.agent_goal)
-                                   .and_then(Tile::as_rails)
-                                   .is_none() {
-                                break;
-                            }
-                        }
-                    }
-                    Route::NotRouteable => unreachable!(),
-                }
+                let map = self.map.read().unwrap();
+                self.agents.update(&map);
             }
 
             if let Event::Render(_) = e {
@@ -129,7 +105,7 @@ impl RenderToPiston {
 
     fn draw(&mut self, e: &Event) {
         let map = self.map.read().unwrap();
-        let agent_pos = self.agent;
+        let render_info = self.agents.render_info();
         self.window
             .draw_2d(e, |c, g| for y in 0..map.height() {
                 clear([0.95; 4], g);
@@ -140,8 +116,11 @@ impl RenderToPiston {
                     }
                 }
                 Self::draw_cursor(c, g, map.cursor);
-                // @TODO: Remove.
-                Self::draw_agent(c, g, agent_pos);
+
+                for agent_render_info in &render_info {
+                    let &((x, y), co) = agent_render_info;
+                    Self::draw_agent(c, g, (x, y), co);
+                }
             });
     }
 
@@ -154,13 +133,11 @@ impl RenderToPiston {
                   g);
     }
 
-    fn draw_agent(c: Context, g: &mut G2d, agent_pos: Coord2) {
-        let x = (agent_pos.x * PPU + (PPU / 2)) as f64 - 2.0;
-        let y = (agent_pos.y * PPU + (PPU / 2)) as f64 - 2.0;
-        ellipse([0.0, 0.0, 0.0, 0.3],
-                [x as f64, y as f64, 4.0, 4.0],
-                c.transform,
-                g);
+    fn draw_agent(c: Context, g: &mut G2d, pos: (f64, f64), co: Color) {
+        let ppuf = PPU as f64;
+        let x = pos.0 * ppuf + (ppuf / 2.0) - 2.0;
+        let y = pos.1 * ppuf + (ppuf / 2.0) - 2.0;
+        ellipse(co, [x, y, 4.0, 4.0], c.transform, g);
     }
 
     fn draw_tile(c: Context, g: &mut G2d, _: Map, l: Coord2, tile: &Tile) {

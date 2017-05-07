@@ -6,12 +6,20 @@ use super::*;
 
 #[derive(Debug)]
 pub struct Agents {
-    ticks_per_unit: usize,
-    ticks_this_unit: usize,
+    ticks_per_unit: u64,
+    ticks_this_unit: u64,
     agents: HashMap<Uuid, Agent>,
 }
 
 impl Agents {
+    pub fn new(ticks_per_unit: u64) -> Agents {
+        Agents {
+            ticks_per_unit: ticks_per_unit,
+            ticks_this_unit: 0,
+            agents: HashMap::new(),
+        }
+    }
+
     pub fn decide(&mut self, map: &Map) {
         for agent in self.agents.values_mut() {
             let agent_state_clone = agent.state.clone();

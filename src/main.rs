@@ -20,7 +20,10 @@ fn main() {
         .exit_on_esc(true)
         .build()
         .unwrap();
-    window.set_ups(10);
+
+    let ups = 10;
+    window.set_ups(ups);
+    let agents = Agents::new(ups);
 
     let mut map = Map::new(Coord2 { x: 80, y: 30 });
 
@@ -120,7 +123,7 @@ fn main() {
     //println!("{}", map);
 
     let map = Arc::new(RwLock::new(map));
-    RenderToPiston::new(window, map).render_loop();
+    RenderToPiston::new(agents, window, map).render_loop();
 
     // for i in 0..20 {
     //     let p = Coord2 { x: 40, y: i + 1 };
