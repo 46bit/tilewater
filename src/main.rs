@@ -9,12 +9,12 @@ extern crate piston_window;
 //use std::time::Duration;
 use std::sync::{Arc, RwLock};
 //use clap::{Arg, App};
-//use rand::{Rng, OsRng};
+use rand::{Rng, OsRng};
 use piston_window::*;
 use tilewater::*;
 
 fn main() {
-    //let mut rng: Box<Rng> = Box::new(OsRng::new().expect("Could not start the PRNG."));
+    let rng: Box<Rng> = Box::new(OsRng::new().expect("Could not start the PRNG."));
 
     let mut window: PistonWindow = WindowSettings::new("Tilewater", [800, 800])
         .exit_on_esc(true)
@@ -24,7 +24,7 @@ fn main() {
     let ups = 40;
     window.set_ups(ups);
     window.set_max_fps(60);
-    let mut agents = Agents::new(ups / 5);
+    let mut agents = Agents::new(ups / 5, rng);
 
     let mut map = Map::new(Coord2 { x: 80, y: 80 });
 
@@ -86,7 +86,6 @@ fn main() {
                   (42, 13, 'f'),
                   (42, 15, 'f'),
                   (42, 17, 'h'),
-                  (42, 19, 'h'),
                   (38, 17, 'g'),
                   (44, 4, 'h'),
                   (46, 4, 'h'),
@@ -125,6 +124,9 @@ fn main() {
                 let agent = Agent::new(Coord2 { x: 40, y: 2 }, Box::new(decider));
                 agents.insert(agent);
             }
+        } else {
+            println!("{:?}", c);
+            panic!("Unbuildable seed building.");
         }
     }
     //println!("{}", map);

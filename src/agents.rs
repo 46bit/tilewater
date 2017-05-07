@@ -1,21 +1,23 @@
 use std::collections::*;
 use std::fmt::Debug;
 use uuid::Uuid;
+use rand::Rng;
 use super::*;
 
-#[derive(Debug)]
 pub struct Agents {
     ticks_per_unit: u64,
     ticks_this_unit: u64,
     agents: HashMap<Uuid, Agent>,
+    rng: Box<Rng>,
 }
 
 impl Agents {
-    pub fn new(ticks_per_unit: u64) -> Agents {
+    pub fn new(ticks_per_unit: u64, rng: Box<Rng>) -> Agents {
         Agents {
             ticks_per_unit: ticks_per_unit,
             ticks_this_unit: 0,
             agents: HashMap::new(),
+            rng: rng,
         }
     }
 
@@ -26,7 +28,9 @@ impl Agents {
     pub fn decide(&mut self, map: &Map) {
         for agent in self.agents.values_mut() {
             let agent_state_clone = agent.state.clone();
-            agent.state.action = agent.decider.decide_action(&agent_state_clone, map);
+            agent.state.action = agent
+                .decider
+                .decide_action(&agent_state_clone, map, &mut self.rng);
         }
     }
 
@@ -104,17 +108,18 @@ pub struct AgentState {
 }
 
 pub trait Decider: Debug {
-    fn decide_action(&mut self, agent: &AgentState, map: &Map) -> AgentAction;
+    fn decide_action(&mut self, agent: &AgentState, map: &Map, rng: &mut Box<Rng>) -> AgentAction;
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ResidentState {
     MovingIn,
+    GoingHome,
     AtHome,
     GoingToShop(Coord2),
-    Shopping(Coord2),
+    Shopping,
     GoingToDrink(Coord2),
-    Drinking(Coord2),
+    Drinking,
     GoingToWork,
     Working,
 }
@@ -137,9 +142,9 @@ impl ResidentDecider {
 }
 
 impl Decider for ResidentDecider {
-    fn decide_action(&mut self, agent: &AgentState, map: &Map) -> AgentAction {
+    fn decide_action(&mut self, agent: &AgentState, map: &Map, rng: &mut Box<Rng>) -> AgentAction {
         let (state, action) = match self.state {
-            ResidentState::MovingIn => {
+            ResidentState::MovingIn | ResidentState::GoingHome => {
                 if agent.position == self.home {
                     (ResidentState::AtHome, AgentAction::Idle)
                 } else {
@@ -151,7 +156,76 @@ impl Decider for ResidentDecider {
                     }
                 }
             }
-            ResidentState::AtHome => (ResidentState::AtHome, AgentAction::Idle),
+            ResidentState::AtHome => {
+                let go_drinking = rng.gen_weighted_bool(60);
+                let go_shopping = rng.gen_weighted_bool(40);
+                if go_shopping == go_drinking {
+                    (ResidentState::AtHome, AgentAction::Idle)
+                } else if go_shopping {
+                    let home_tile = map.get(self.home).and_then(Tile::as_building).unwrap();
+                    let start_direction =
+                        Direction::between_coord2s(self.home, home_tile.entryway_pos).unwrap();
+                    // @TODO: REMOVE HARDCODING.
+                    (ResidentState::GoingToShop(Coord2 { x: 59, y: 7 }),
+                     AgentAction::Move(start_direction))
+                } else {
+                    let home_tile = map.get(self.home).and_then(Tile::as_building).unwrap();
+                    let start_direction =
+                        Direction::between_coord2s(self.home, home_tile.entryway_pos).unwrap();
+                    // @TODO: REMOVE HARDCODING.
+                    (ResidentState::GoingToDrink(Coord2 { x: 42, y: 10 }),
+                     AgentAction::Move(start_direction))
+                }
+            }
+            ResidentState::GoingToShop(shop_pos) => {
+                if agent.position == shop_pos {
+                    (ResidentState::Shopping, AgentAction::Idle)
+                } else {
+                    match direction_of_route(map, agent.position, shop_pos) {
+                        RouteDirection::Direction(direction) => {
+                            (ResidentState::GoingToShop(shop_pos), AgentAction::Move(direction))
+                        }
+                        _ => panic!("No direction of route decided."),
+                    }
+                }
+            }
+            ResidentState::Shopping => {
+                if rng.gen_weighted_bool(10) {
+                    let shop_tile = map.get(agent.position)
+                        .and_then(Tile::as_building)
+                        .unwrap();
+                    let start_direction =
+                        Direction::between_coord2s(agent.position, shop_tile.entryway_pos).unwrap();
+                    (ResidentState::GoingHome, AgentAction::Move(start_direction))
+                } else {
+                    (ResidentState::Shopping, AgentAction::Idle)
+                }
+            }
+            ResidentState::GoingToDrink(saloon_pos) => {
+                if agent.position == saloon_pos {
+                    (ResidentState::Drinking, AgentAction::Idle)
+                } else {
+                    match direction_of_route(map, agent.position, saloon_pos) {
+                        RouteDirection::Direction(direction) => {
+                            (ResidentState::GoingToDrink(saloon_pos), AgentAction::Move(direction))
+                        }
+                        _ => panic!("No direction of route decided."),
+                    }
+                }
+            }
+            ResidentState::Drinking => {
+                if rng.gen_weighted_bool(40) {
+                    let saloon_tile = map.get(agent.position)
+                        .and_then(Tile::as_building)
+                        .unwrap();
+                    let start_direction = Direction::between_coord2s(agent.position,
+                                                                     saloon_tile.entryway_pos)
+                            .unwrap();
+                    (ResidentState::GoingHome, AgentAction::Move(start_direction))
+                } else {
+                    (ResidentState::Drinking, AgentAction::Idle)
+                }
+            }
             _ => unimplemented!(),
         };
         self.state = state;
