@@ -1,6 +1,5 @@
 use std::sync::{Arc, RwLock};
 use piston_window::*;
-use piston_window::types::Color;
 use super::*;
 
 const PPU: u64 = 10;
@@ -98,6 +97,11 @@ impl RenderToPiston {
                 let pos = map.cursor;
                 if map.can_build(pos) {
                     map.build(pos, building);
+                    if building == Building::House {
+                        let decider = ResidentDecider::new(pos);
+                        let agent = Agent::new(Coord2 { x: 40, y: 2 }, Box::new(decider));
+                        self.agents.insert(agent);
+                    }
                 }
             }
         }
@@ -214,13 +218,13 @@ impl RenderToPiston {
         let y = l.y * PPU;
         match orientation {
             Orientation::Vertical => {
-                rectangle([0.6, 0.6, 0.6, 1.0],
+                rectangle([0.2, 0.2, 0.2, 1.0],
                           [(x + PPU / 2 - 1) as f64, y as f64, 2.0, PPU as f64],
                           c.transform,
                           g);
             }
             Orientation::Horizontal => {
-                rectangle([0.6, 0.6, 0.6, 1.0],
+                rectangle([0.2, 0.2, 0.2, 1.0],
                           [x as f64, (y + PPU / 2 - 1) as f64, PPU as f64, 2.0],
                           c.transform,
                           g);
@@ -231,7 +235,7 @@ impl RenderToPiston {
     fn draw_paving(c: Context, g: &mut G2d, l: Coord2) {
         let x = l.x * PPU;
         let y = l.y * PPU;
-        rectangle([0.6, 0.6, 0.6, 1.0],
+        rectangle([0.2, 0.2, 0.2, 1.0],
                   [x as f64, y as f64, PPU as f64, PPU as f64],
                   c.transform,
                   g);

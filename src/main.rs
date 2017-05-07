@@ -26,7 +26,7 @@ fn main() {
     window.set_max_fps(60);
     let mut agents = Agents::new(ups / 5);
 
-    let mut map = Map::new(Coord2 { x: 80, y: 30 });
+    let mut map = Map::new(Coord2 { x: 80, y: 80 });
 
     for y in 1...30 {
         let p = Coord2 { x: 40, y: y };
@@ -115,17 +115,15 @@ fn main() {
                   (49, 17, 'h'),
                   (51, 17, 'h'),
                   (53, 17, 'h')];
-    let mut o1 = true;
     for b in bs {
         let c = Coord2 { x: b.0, y: b.1 + 1 };
         if map.can_build(c) {
             let building = Building::from_code(b.2).unwrap();
             map.build(c, building);
-            if o1 && building == Building::House {
+            if building == Building::House {
                 let decider = ResidentDecider::new(c);
                 let agent = Agent::new(Coord2 { x: 40, y: 2 }, Box::new(decider));
                 agents.insert(agent);
-                //o1 = false;
             }
         }
     }

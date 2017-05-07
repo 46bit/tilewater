@@ -1,7 +1,6 @@
 use std::collections::*;
 use std::fmt::Debug;
 use uuid::Uuid;
-use piston_window::types::Color;
 use super::*;
 
 #[derive(Debug)]
