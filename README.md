@@ -15,7 +15,7 @@ Once you have that, `git clone https://github.com/46bit/tilewater.git` this repo
 You interact with the world using a cursor. At present this starts in the top-left. Use your arrow keys to move the cursor about (at present, this may only function on macOS).
 
 * Newly-built roads must neighbour an existing road. Build one under the cursor using your space key.
-* Buildings are built with a 1-square gap between them and a road. This gap becomes an entranceway.
+* Buildings are built with a 1-square gap between them and a road. This gap becomes an entranceway. They cannot be placed next to another road or building, but can be built diagonally.
   * Typing `h` will build a House (green). A cim (a simulated person) will be spawned and move to live in it.
   * Typing `g` will build a General Store (purple). These are visited regularly by cims, as if to purchase groceries.
   * Typing `s` will build a Saloon (blue). These are visited regularly by cims, as if to socialise.
