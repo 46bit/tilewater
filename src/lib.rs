@@ -1,6 +1,7 @@
 extern crate rand;
 extern crate piston_window;
 extern crate uuid;
+extern crate rayon;
 
 mod tile;
 mod map;

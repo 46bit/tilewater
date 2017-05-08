@@ -1,7 +1,6 @@
 #![feature(inclusive_range_syntax)]
 
 extern crate clap;
-extern crate rand;
 extern crate tilewater;
 extern crate piston_window;
 
@@ -9,13 +8,10 @@ extern crate piston_window;
 //use std::time::Duration;
 use std::sync::{Arc, RwLock};
 //use clap::{Arg, App};
-use rand::{Rng, OsRng};
 use piston_window::*;
 use tilewater::*;
 
 fn main() {
-    let rng: Box<Rng> = Box::new(OsRng::new().expect("Could not start the PRNG."));
-
     let mut window: PistonWindow = WindowSettings::new("Tilewater", [800, 800])
         .exit_on_esc(true)
         .build()
@@ -24,7 +20,7 @@ fn main() {
     let ups = 40;
     window.set_ups(ups);
     window.set_max_fps(60);
-    let mut agents = Agents::new(ups / 5, rng);
+    let mut agents = Agents::new(ups / 5);
 
     let mut map = Map::new(Coord2 { x: 80, y: 80 });
 

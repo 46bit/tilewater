@@ -8,6 +8,7 @@ clap = "2.23.1"
 rand = "0.3"
 piston_window = "0.61.0"
 uuid = { version = "0.4", features = ["v4"] }
+rayon = "0.7.0"
 
 [[bin]]
 name = "tilewater"

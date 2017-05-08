@@ -1,23 +1,22 @@
 use std::collections::*;
 use std::fmt::Debug;
 use uuid::Uuid;
-use rand::Rng;
+use rand::*;
+use rayon::prelude::*;
 use super::*;
 
 pub struct Agents {
     ticks_per_unit: u64,
     ticks_this_unit: u64,
     agents: HashMap<Uuid, Agent>,
-    rng: Box<Rng>,
 }
 
 impl Agents {
-    pub fn new(ticks_per_unit: u64, rng: Box<Rng>) -> Agents {
+    pub fn new(ticks_per_unit: u64) -> Agents {
         Agents {
             ticks_per_unit: ticks_per_unit,
             ticks_this_unit: 0,
             agents: HashMap::new(),
-            rng: rng,
         }
     }
 
@@ -26,40 +25,44 @@ impl Agents {
     }
 
     pub fn decide(&mut self, map: &Map) {
-        for agent in self.agents.values_mut() {
-            let agent_state_clone = agent.state.clone();
-            agent.state.action = agent
-                .decider
-                .decide_action(&agent_state_clone, map, &mut self.rng);
-        }
+        self.agents
+            .par_iter_mut()
+            .for_each(|(_, agent)| {
+                          let mut rng: Box<Rng> = Box::new(thread_rng());
+                          let agent_state_clone = agent.state.clone();
+                          agent.state.action =
+                              agent
+                                  .decider
+                                  .decide_action(&agent_state_clone, map, &mut rng);
+                      });
     }
 
     pub fn update(&mut self, map: &Map) {
+        let ticks_per_unit = self.ticks_per_unit;
         self.ticks_this_unit += 1;
+        let ticks_this_unit = self.ticks_this_unit;
         let mut dead_agent_ids = vec![];
-        for agent in self.agents.values_mut() {
-            match agent.state.action {
-                AgentAction::Dead => {
-                    dead_agent_ids.push(agent.state.id);
-                }
-                AgentAction::Idle => {}
-                AgentAction::Move(direction) => {
-                    let direction_offset = direction.as_offset();
-                    agent.subunit_position.0 += (direction_offset.0 as f64) /
-                                                (self.ticks_per_unit as f64);
-                    agent.subunit_position.1 += (direction_offset.1 as f64) /
-                                                (self.ticks_per_unit as f64);
-                    if self.ticks_this_unit == self.ticks_per_unit {
-                        agent.state.position.x =
-                            ((agent.state.position.x as i64) + direction_offset.0) as u64;
-                        agent.state.position.y =
-                            ((agent.state.position.y as i64) + direction_offset.1) as u64;
-                        agent.subunit_position.0 = agent.state.position.x as f64;
-                        agent.subunit_position.1 = agent.state.position.y as f64;
-                    }
+        self.agents
+            .par_iter_mut()
+            .for_each(|(_, agent)| match agent.state.action {
+                          AgentAction::Dead => {
+                //dead_agent_ids.push(agent.state.id);
+            }
+                          AgentAction::Idle => {}
+                          AgentAction::Move(direction) => {
+                let direction_offset = direction.as_offset();
+                agent.subunit_position.0 += (direction_offset.0 as f64) / (ticks_per_unit as f64);
+                agent.subunit_position.1 += (direction_offset.1 as f64) / (ticks_per_unit as f64);
+                if ticks_this_unit == ticks_per_unit {
+                    agent.state.position.x =
+                        ((agent.state.position.x as i64) + direction_offset.0) as u64;
+                    agent.state.position.y =
+                        ((agent.state.position.y as i64) + direction_offset.1) as u64;
+                    agent.subunit_position.0 = agent.state.position.x as f64;
+                    agent.subunit_position.1 = agent.state.position.y as f64;
                 }
             }
-        }
+                      });
         for dead_agent_id in dead_agent_ids {
             self.agents.remove(&dead_agent_id);
         }
@@ -91,11 +94,11 @@ pub enum AgentAction {
 pub struct Agent {
     state: AgentState,
     subunit_position: (f64, f64),
-    decider: Box<Decider>,
+    decider: Box<Decider + Send + Sync>,
 }
 
 impl Agent {
-    pub fn new(position: Coord2, decider: Box<Decider>) -> Agent {
+    pub fn new(position: Coord2, decider: Box<Decider + Send + Sync>) -> Agent {
         Agent {
             state: AgentState {
                 id: Uuid::new_v4(),
