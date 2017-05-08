@@ -96,11 +96,11 @@ pub fn direction_of_route(map: &Map, start_pos: Coord2, goal_pos: Coord2) -> Rou
 /// Find route to closest of several possible destinations.
 ///
 /// This could be optimised with an adaptation of A* search.
-pub fn route_to_any(map: &Map, start_pos: Coord2, goals_pos: Vec<Coord2>) -> Route {
+pub fn route_to_any(map: &Map, start_pos: Coord2, goals_pos: &Vec<Coord2>) -> Route {
     let mut routes = vec![];
 
     for goal_pos in goals_pos {
-        match route(map, start_pos, goal_pos) {
+        match route(map, start_pos, *goal_pos) {
             Route::NotRouteable => {}
             Route::Complete => return Route::Complete,
             Route::Tiles(route) => {
@@ -112,6 +112,21 @@ pub fn route_to_any(map: &Map, start_pos: Coord2, goals_pos: Vec<Coord2>) -> Rou
     match routes.into_iter().min_by(|x, y| x.len().cmp(&y.len())) {
         Some(route) => Route::Tiles(route),
         None => Route::NotRouteable,
+    }
+}
+
+pub fn route_to_building(map: &Map, start_pos: Coord2, building: Building) -> Route {
+    if let Some(buildings_pos) = map.buildings.get(&building) {
+        route_to_any(map, start_pos, buildings_pos)
+    } else {
+        Route::NotRouteable
+    }
+}
+
+pub fn closest_building(map: &Map, start_pos: Coord2, building: Building) -> Option<Coord2> {
+    match route_to_building(map, start_pos, building) {
+        Route::Tiles(route) => route.last().cloned(),
+        _ => None,
     }
 }
 

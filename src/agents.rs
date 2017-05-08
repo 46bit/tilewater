@@ -36,8 +36,12 @@ impl Agents {
 
     pub fn update(&mut self, map: &Map) {
         self.ticks_this_unit += 1;
+        let mut dead_agent_ids = vec![];
         for agent in self.agents.values_mut() {
             match agent.state.action {
+                AgentAction::Dead => {
+                    dead_agent_ids.push(agent.state.id);
+                }
                 AgentAction::Idle => {}
                 AgentAction::Move(direction) => {
                     let direction_offset = direction.as_offset();
@@ -56,6 +60,9 @@ impl Agents {
                 }
             }
         }
+        for dead_agent_id in dead_agent_ids {
+            self.agents.remove(&dead_agent_id);
+        }
         if self.ticks_this_unit == self.ticks_per_unit {
             self.ticks_this_unit = 0;
             self.decide(map);
@@ -72,6 +79,8 @@ impl Agents {
 
 #[derive(Copy, Clone, Debug)]
 pub enum AgentAction {
+    /// Agent is dead. Will be removed immediately.
+    Dead,
     /// Make no large-scale movement this turn.
     Idle,
     /// Move 1 square in this direction before the next action is decided.
@@ -109,6 +118,10 @@ pub struct AgentState {
 
 pub trait Decider: Debug {
     fn decide_action(&mut self, agent: &AgentState, map: &Map, rng: &mut Box<Rng>) -> AgentAction;
+
+    // @TODO: Figure out how to implement respawning. This would require an agent to know
+    // where it should respawn, which imposes some tough information requirements.
+    //fn respawn(&mut self, agent: &AgentState, map: &Map, rng: &mut Box<Rng>) -> bool;
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -139,110 +152,81 @@ impl ResidentDecider {
             state: ResidentState::MovingIn,
         }
     }
+
+    fn going_to(&mut self,
+                agent: &AgentState,
+                map: &Map,
+                to: Coord2,
+                and_then: (ResidentState, AgentAction))
+                -> AgentAction {
+        match direction_of_route(map, agent.position, to) {
+            RouteDirection::NotRouteable => AgentAction::Dead,
+            RouteDirection::Complete => {
+                self.state = and_then.0;
+                and_then.1
+            }
+            RouteDirection::Direction(direction) => AgentAction::Move(direction),
+        }
+    }
+
+    fn go_home(&mut self, agent: &AgentState, map: &Map) -> AgentAction {
+        let home = self.home;
+        self.state = ResidentState::GoingHome;
+        self.going_to(agent, map, home, (ResidentState::AtHome, AgentAction::Idle))
+    }
 }
 
 impl Decider for ResidentDecider {
     fn decide_action(&mut self, agent: &AgentState, map: &Map, rng: &mut Box<Rng>) -> AgentAction {
-        let (state, action) = match self.state {
+        let home = self.home;
+        match self.state {
             ResidentState::MovingIn | ResidentState::GoingHome => {
-                if agent.position == self.home {
-                    (ResidentState::AtHome, AgentAction::Idle)
-                } else {
-                    match direction_of_route(map, agent.position, self.home) {
-                        RouteDirection::Direction(direction) => {
-                            (ResidentState::MovingIn, AgentAction::Move(direction))
-                        }
-                        _ => panic!("No direction of route decided."),
-                    }
-                }
+                self.going_to(agent, map, home, (ResidentState::AtHome, AgentAction::Idle))
             }
             ResidentState::AtHome => {
-                let go_drinking = map.buildings.contains_key(&Building::Saloon) &&
-                                  rng.gen_weighted_bool(60);
-                let go_shopping = map.buildings.contains_key(&Building::GeneralStore) &&
-                                  rng.gen_weighted_bool(40);
+                // @TODO: These checks are not enough if some were created but then all were
+                // deleted. Instead, use `closest` giving `None` as the fallback.
+                let go_drinking = rng.gen_weighted_bool(60);
+                let go_shopping = rng.gen_weighted_bool(40);
                 if go_shopping == go_drinking {
-                    (ResidentState::AtHome, AgentAction::Idle)
-                } else if go_shopping {
-                    let home_tile = map.get(self.home).and_then(Tile::as_building).unwrap();
-                    let start_direction =
-                        Direction::between_coord2s(self.home, home_tile.entryway_pos).unwrap();
-                    match route_to_any(map,
-                                       self.home,
-                                       map.buildings[&Building::GeneralStore].clone()) {
-                        Route::Tiles(route) => {
-                            let shop_pos = route.last().unwrap();
-                            (ResidentState::GoingToShop(*shop_pos),
-                             AgentAction::Move(start_direction))
-                        }
-                        _ => panic!("No closest general store decided."),
-                    }
-                } else {
-                    let home_tile = map.get(self.home).and_then(Tile::as_building).unwrap();
-                    let start_direction =
-                        Direction::between_coord2s(self.home, home_tile.entryway_pos).unwrap();
-                    match route_to_any(map, self.home, map.buildings[&Building::Saloon].clone()) {
-                        Route::Tiles(route) => {
-                            let saloon_pos = route.last().unwrap();
-                            (ResidentState::GoingToDrink(*saloon_pos),
-                             AgentAction::Move(start_direction))
-                        }
-                        _ => panic!("No closest general store decided."),
-                    }
+                    return AgentAction::Idle;
                 }
+
+                let (building_type, state_constructor, done_state): (Building, fn(Coord2) -> ResidentState, ResidentState) = if go_drinking {
+                    (Building::Saloon, ResidentState::GoingToDrink, ResidentState::Drinking)
+                } else {
+                    (Building::GeneralStore, ResidentState::GoingToShop, ResidentState::Shopping)
+                };
+                let closest = match closest_building(map, agent.position, building_type) {
+                    Some(closest) => closest,
+                    None => return AgentAction::Dead,
+                };
+                self.state = state_constructor(closest);
+                self.going_to(agent, map, closest, (done_state, AgentAction::Idle))
             }
             ResidentState::GoingToShop(shop_pos) => {
-                if agent.position == shop_pos {
-                    (ResidentState::Shopping, AgentAction::Idle)
-                } else {
-                    match direction_of_route(map, agent.position, shop_pos) {
-                        RouteDirection::Direction(direction) => {
-                            (ResidentState::GoingToShop(shop_pos), AgentAction::Move(direction))
-                        }
-                        _ => panic!("No direction of route decided."),
-                    }
-                }
+                let and_then = (ResidentState::Shopping, AgentAction::Idle);
+                self.going_to(agent, map, shop_pos, and_then)
             }
             ResidentState::Shopping => {
                 if rng.gen_weighted_bool(10) {
-                    let shop_tile = map.get(agent.position)
-                        .and_then(Tile::as_building)
-                        .unwrap();
-                    let start_direction =
-                        Direction::between_coord2s(agent.position, shop_tile.entryway_pos).unwrap();
-                    (ResidentState::GoingHome, AgentAction::Move(start_direction))
+                    self.go_home(agent, map)
                 } else {
-                    (ResidentState::Shopping, AgentAction::Idle)
+                    AgentAction::Idle
                 }
             }
             ResidentState::GoingToDrink(saloon_pos) => {
-                if agent.position == saloon_pos {
-                    (ResidentState::Drinking, AgentAction::Idle)
-                } else {
-                    match direction_of_route(map, agent.position, saloon_pos) {
-                        RouteDirection::Direction(direction) => {
-                            (ResidentState::GoingToDrink(saloon_pos), AgentAction::Move(direction))
-                        }
-                        _ => panic!("No direction of route decided."),
-                    }
-                }
+                let and_then = (ResidentState::Drinking, AgentAction::Idle);
+                self.going_to(agent, map, saloon_pos, and_then)
             }
             ResidentState::Drinking => {
                 if rng.gen_weighted_bool(40) {
-                    let saloon_tile = map.get(agent.position)
-                        .and_then(Tile::as_building)
-                        .unwrap();
-                    let start_direction = Direction::between_coord2s(agent.position,
-                                                                     saloon_tile.entryway_pos)
-                            .unwrap();
-                    (ResidentState::GoingHome, AgentAction::Move(start_direction))
+                    self.go_home(agent, map)
                 } else {
-                    (ResidentState::Drinking, AgentAction::Idle)
+                    AgentAction::Idle
                 }
             }
             _ => unimplemented!(),
-        };
-        self.state = state;
-        action
+        }
     }
 }
