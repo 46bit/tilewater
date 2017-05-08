@@ -21,6 +21,8 @@ You interact with the world using a cursor. At present this starts in the top-le
   * Typing `s` will build a Saloon (blue). These are visited regularly by cims, as if to socialise.
   * Typing `f` will built a Factory (red). In time these will employ workers.
 
+If you get stuck, [the preview video](https://www.youtube.com/watch?v=Z_5WOXicQbc) shows examples of using all these commands.
+
 ## A pretty little example
 
 ![I rather like this street layout.](https://r.46b.it/lil-tilewater-city.png)
