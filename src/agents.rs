@@ -41,15 +41,12 @@ impl Agents {
         let ticks_per_unit = self.ticks_per_unit;
         self.ticks_this_unit += 1;
         let ticks_this_unit = self.ticks_this_unit;
-        let mut dead_agent_ids = vec![];
-        self.agents
+        let dead_agent_ids: Vec<_> = self.agents
             .par_iter_mut()
-            .for_each(|(_, agent)| match agent.state.action {
-                          AgentAction::Dead => {
-                //dead_agent_ids.push(agent.state.id);
-            }
-                          AgentAction::Idle => {}
-                          AgentAction::Move(direction) => {
+            .filter_map(|(_, agent)| match agent.state.action {
+                            AgentAction::Dead => Some(agent.state.id),
+                            AgentAction::Idle => None,
+                            AgentAction::Move(direction) => {
                 let direction_offset = direction.as_offset();
                 agent.subunit_position.0 += (direction_offset.0 as f64) / (ticks_per_unit as f64);
                 agent.subunit_position.1 += (direction_offset.1 as f64) / (ticks_per_unit as f64);
@@ -61,8 +58,10 @@ impl Agents {
                     agent.subunit_position.0 = agent.state.position.x as f64;
                     agent.subunit_position.1 = agent.state.position.y as f64;
                 }
+                None
             }
-                      });
+                        })
+            .collect();
         for dead_agent_id in dead_agent_ids {
             self.agents.remove(&dead_agent_id);
         }
@@ -181,6 +180,10 @@ impl ResidentDecider {
 
 impl Decider for ResidentDecider {
     fn decide_action(&mut self, agent: &AgentState, map: &Map, rng: &mut Box<Rng>) -> AgentAction {
+        // Ensure that idle residents are killed if the square they are on is deleted.
+        if map.get(agent.position).is_none() {
+            return AgentAction::Dead;
+        }
         let home = self.home;
         match self.state {
             ResidentState::MovingIn | ResidentState::GoingHome => {
