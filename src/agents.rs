@@ -184,6 +184,7 @@ impl Decider for ResidentDecider {
         if map.get(agent.position).is_none() {
             return AgentAction::Dead;
         }
+
         let home = self.home;
         match self.state {
             ResidentState::MovingIn | ResidentState::GoingHome => {

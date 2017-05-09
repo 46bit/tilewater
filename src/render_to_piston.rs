@@ -15,6 +15,7 @@ pub enum Cmd {
 }
 
 pub struct RenderToPiston {
+    time: u64,
     agents: Agents,
     window: PistonWindow,
     map: Arc<RwLock<Map>>,
@@ -22,7 +23,9 @@ pub struct RenderToPiston {
 
 impl RenderToPiston {
     pub fn new(agents: Agents, window: PistonWindow, map: Arc<RwLock<Map>>) -> RenderToPiston {
+        let time = 0;
         RenderToPiston {
+            time,
             agents,
             window,
             map,
@@ -40,6 +43,7 @@ impl RenderToPiston {
             if let Event::Update(_) = e {
                 let map = self.map.read().unwrap();
                 self.agents.update(&map);
+                self.time += 1;
             }
 
             if let Event::Render(_) = e {
@@ -108,6 +112,7 @@ impl RenderToPiston {
     }
 
     fn draw(&mut self, e: &Event) {
+        let time = self.time;
         let map = self.map.read().unwrap();
         let agent_subunit_positions = self.agents.agent_subunit_positions();
 
@@ -122,6 +127,8 @@ impl RenderToPiston {
                         }
                     }
                 }
+
+                Self::draw_train_prototype(c, g, map.clone(), (10.0 + ((time as f64) / 10.0), 0.0));
 
                 Self::draw_cursor(c, g, map.cursor);
 
@@ -148,6 +155,35 @@ impl RenderToPiston {
                 [x, y, 4.0, 4.0],
                 c.transform,
                 g);
+    }
+
+    fn draw_train_prototype(c: Context, g: &mut G2d, _: Map, l: (f64, f64)) {
+        let ppuf = PPU as f64;
+        let mut x = l.0 * ppuf + 1.0;
+        let w = (ppuf - 2.0) * 3.0;
+        let y = l.1 * ppuf;
+        let h = ppuf + 1.0;
+
+        for i in 0..3 {
+            rectangle([0.0, 0.0, 0.0, 1.0],
+                      [x as f64, y as f64, w as f64, h as f64],
+                      c.transform,
+                      g);
+            rectangle([1.0, 1.0, 1.0, 1.0],
+                      [(x + 1.0) as f64, (y + 1.0) as f64, (w - 2.0) as f64, (h - 2.0) as f64],
+                      c.transform,
+                      g);
+            rectangle([0.0, 0.0, 0.0, 1.0],
+                      [x + w, y + 2.0, 2.0, h - 4.0],
+                      c.transform,
+                      g);
+            x += w + 2.0;
+        }
+
+        rectangle([0.3, 0.3, 0.3, 1.0],
+                  [x as f64, y as f64, w as f64, h as f64],
+                  c.transform,
+                  g);
     }
 
     fn draw_tile(c: Context, g: &mut G2d, _: Map, l: Coord2, tile: &Tile) {
