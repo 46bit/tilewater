@@ -187,25 +187,30 @@ impl Decider for ResidentDecider {
                 self.going_to(agent, map, home, (ResidentState::AtHome, AgentAction::Idle))
             }
             ResidentState::AtHome => {
-                // @TODO: These checks are not enough if some were created but then all were
-                // deleted. Instead, use `closest` giving `None` as the fallback.
                 let go_drinking = rng.gen_weighted_bool(60);
                 let go_shopping = rng.gen_weighted_bool(40);
-                if go_shopping == go_drinking {
-                    return AgentAction::Idle;
-                }
+                let go_working = rng.gen_weighted_bool(80);
 
-                let (building_type, state_constructor, done_state): (Building, fn(Coord2) -> ResidentState, ResidentState) = if go_drinking {
-                    (Building::Saloon, ResidentState::GoingToDrink, ResidentState::Drinking)
+                if go_working && self.work.is_some() {
+                    self.state = ResidentState::GoingToWork;
+                    let and_then = (ResidentState::Working, AgentAction::Idle);
+                    let work = self.work.unwrap();
+                    self.going_to(agent, map, work, and_then)
                 } else {
-                    (Building::GeneralStore, ResidentState::GoingToShop, ResidentState::Shopping)
-                };
-                let closest = match closest_building(map, agent.position, building_type) {
-                    Some(closest) => closest,
-                    None => return AgentAction::Dead,
-                };
-                self.state = state_constructor(closest);
-                self.going_to(agent, map, closest, (done_state, AgentAction::Idle))
+                    let (building_type, state_constructor, done_state): (Building, fn(Coord2) -> ResidentState, ResidentState) = if go_drinking {
+                        (Building::Saloon, ResidentState::GoingToDrink, ResidentState::Drinking)
+                    } else if go_shopping {
+                        (Building::GeneralStore, ResidentState::GoingToShop, ResidentState::Shopping)
+                    } else {
+                        return AgentAction::Idle;
+                    };
+                    let closest = match closest_building(map, agent.position, building_type) {
+                        Some(closest) => closest,
+                        None => return AgentAction::Dead,
+                    };
+                    self.state = state_constructor(closest);
+                    self.going_to(agent, map, closest, (done_state, AgentAction::Idle))
+                }
             }
             ResidentState::GoingToShop(shop_pos) => {
                 let and_then = (ResidentState::Shopping, AgentAction::Idle);
@@ -223,13 +228,32 @@ impl Decider for ResidentDecider {
                 self.going_to(agent, map, saloon_pos, and_then)
             }
             ResidentState::Drinking => {
-                if rng.gen_weighted_bool(40) {
+                let chance_of_new_job = if self.work.is_none() { 1000 } else { 100 };
+                if rng.gen_weighted_bool(chance_of_new_job) {
+                    let random_factory = *rng.choose(&map.buildings[&Building::Factory]).unwrap();
+                    self.work = Some(random_factory);
+                    self.state = ResidentState::GoingToWork;
+                    let and_then = (ResidentState::Working, AgentAction::Idle);
+                    let work = self.work.unwrap();
+                    self.going_to(agent, map, work, and_then)
+                } else if rng.gen_weighted_bool(40) {
                     self.go_home(agent, map)
                 } else {
                     AgentAction::Idle
                 }
             }
-            _ => unimplemented!(),
+            ResidentState::GoingToWork => {
+                let work = self.work.unwrap();
+                let and_then = (ResidentState::Working, AgentAction::Idle);
+                self.going_to(agent, map, work, and_then)
+            }
+            ResidentState::Working => {
+                if rng.gen_weighted_bool(2000) {
+                    self.go_home(agent, map)
+                } else {
+                    AgentAction::Idle
+                }
+            }
         }
     }
 }
