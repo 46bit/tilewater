@@ -343,7 +343,7 @@ impl TrainDecider {
 }
 
 impl Decider for TrainDecider {
-    fn decide_action(&mut self, agent: &AgentState, _: &Map, _: &mut Box<Rng>) -> AgentAction {
+    fn decide_action(&mut self, agent: &AgentState, _: &Map, rng: &mut Box<Rng>) -> AgentAction {
         match self.state {
             TrainState::Arriving => {
                 let head_pos = Coord2 {
@@ -351,8 +351,25 @@ impl Decider for TrainDecider {
                     y: agent.position.y,
                 };
                 if head_pos == self.platform {
-                    self.state = TrainState::AtPlatform(18);
-                    AgentAction::Idle
+                    // In general we don't want to take new passengers during a ride. But.
+                    // If a train is about to pass straight through with no passengers and
+                    // yet the player has placed some houses, it'd be nice to not waste time
+                    // so we will use those new people as passengers.
+                    if self.passengers.is_empty() {
+                        self.take_all_ready_passengers();
+                    }
+                    if self.passengers.is_empty() {
+                        // If no passengers, skip stopping at the platform.
+                        self.state = TrainState::Departing;
+                        AgentAction::Move(Direction::East)
+                    } else {
+                        // Shuffle passengers to prevent noticable patterns.
+                        // This actually seemed less visually pleasant. Maybe the game
+                        // environment looks too artificial for it.
+                        //rng.shuffle(&mut self.passengers);
+                        self.state = TrainState::AtPlatform(18);
+                        AgentAction::Idle
+                    }
                 } else {
                     AgentAction::Move(Direction::East)
                 }
@@ -374,10 +391,24 @@ impl Decider for TrainDecider {
                 if agent.position.x < 100 {
                     AgentAction::Move(Direction::East)
                 } else {
-                    self.take_all_ready_passengers();
-                    self.state = TrainState::Arriving;
-                    AgentAction::Jump(Coord2 { x: 0, y: 0 },
-                                      Box::new(AgentAction::Move(Direction::East)))
+                    // When we have some passengers, we'd like to delay 1 update so that
+                    // it doesn't look weirdly immediate that the train appears.
+                    // When we don't have passengers, set off each 1-in-68 updates.
+                    if !self.passengers.is_empty() {
+                        self.take_all_ready_passengers();
+                        self.state = TrainState::Arriving;
+                        AgentAction::Jump(Coord2 { x: 0, y: 0 },
+                                          Box::new(AgentAction::Move(Direction::East)))
+                    } else {
+                        self.take_all_ready_passengers();
+                        if rng.gen_weighted_bool(68) {
+                            self.state = TrainState::Arriving;
+                            AgentAction::Jump(Coord2 { x: 0, y: 0 },
+                                              Box::new(AgentAction::Move(Direction::East)))
+                        } else {
+                            AgentAction::Idle
+                        }
+                    }
                 }
             }
         }
