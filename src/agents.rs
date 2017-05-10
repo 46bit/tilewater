@@ -1,6 +1,7 @@
 use std::collections::*;
 use std::fmt::Debug;
 use std::mem;
+use std::sync::{mpsc, Mutex};
 use uuid::Uuid;
 use rand::*;
 use rayon::prelude::*;
@@ -317,15 +318,26 @@ pub enum TrainState {
 pub struct TrainDecider {
     platform: Coord2,
     state: TrainState,
+    passenger_rx: Mutex<mpsc::Receiver<Agent>>,
     pub passengers: Vec<Agent>,
 }
 
 impl TrainDecider {
-    pub fn new(platform: Coord2) -> TrainDecider {
-        TrainDecider {
+    pub fn new(platform: Coord2, passenger_rx: mpsc::Receiver<Agent>) -> TrainDecider {
+        let mut d = TrainDecider {
             platform: platform,
             state: TrainState::Arriving,
+            passenger_rx: Mutex::new(passenger_rx),
             passengers: Vec::new(),
+        };
+        d.take_all_ready_passengers();
+        d
+    }
+
+    fn take_all_ready_passengers(&mut self) {
+        let passenger_rx = self.passenger_rx.lock().unwrap();
+        while let Ok(passenger) = passenger_rx.try_recv() {
+            self.passengers.push(passenger);
         }
     }
 }
@@ -359,6 +371,7 @@ impl Decider for TrainDecider {
                 if agent.position.x < 100 {
                     AgentAction::Move(Direction::East)
                 } else {
+                    self.take_all_ready_passengers();
                     self.state = TrainState::Arriving;
                     AgentAction::Jump(Coord2 { x: 0, y: 0 },
                                       Box::new(AgentAction::Move(Direction::East)))

@@ -1,4 +1,4 @@
-use std::sync::{Arc, RwLock};
+use std::sync::{mpsc, Arc, RwLock};
 use piston_window::*;
 use super::*;
 
@@ -18,14 +18,20 @@ pub struct RenderToPiston {
     agents: Agents,
     window: PistonWindow,
     map: Arc<RwLock<Map>>,
+    passenger_tx: mpsc::Sender<Agent>,
 }
 
 impl RenderToPiston {
-    pub fn new(agents: Agents, window: PistonWindow, map: Arc<RwLock<Map>>) -> RenderToPiston {
+    pub fn new(agents: Agents,
+               window: PistonWindow,
+               map: Arc<RwLock<Map>>,
+               passenger_tx: mpsc::Sender<Agent>)
+               -> RenderToPiston {
         RenderToPiston {
             agents,
             window,
             map,
+            passenger_tx,
         }
     }
 
@@ -100,7 +106,7 @@ impl RenderToPiston {
                     if building == Building::House {
                         let decider = ResidentDecider::new(pos);
                         let agent = Agent::new(Coord2 { x: 40, y: 2 }, Box::new(decider));
-                        self.agents.insert(AgentKind::Resident, agent);
+                        self.passenger_tx.send(agent).unwrap();
                     }
                 }
             }
@@ -168,7 +174,7 @@ impl RenderToPiston {
                   c.transform,
                   g);
 
-        for i in 0..3 {
+        for _ in 0..3 {
             x -= w + 2.0;
             rectangle([0.0, 0.0, 0.0, 1.0],
                       [x as f64, y as f64, w as f64, h as f64],

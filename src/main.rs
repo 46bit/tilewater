@@ -6,7 +6,7 @@ extern crate piston_window;
 
 //use std::thread;
 //use std::time::Duration;
-use std::sync::{Arc, RwLock};
+use std::sync::{mpsc, Arc, RwLock};
 //use clap::{Arg, App};
 use piston_window::*;
 use tilewater::*;
@@ -110,7 +110,8 @@ fn main() {
                   (49, 17, 'h'),
                   (51, 17, 'h'),
                   (53, 17, 'h')];
-    let mut train_decider = TrainDecider::new(Coord2 { x: 42, y: 0 });
+
+    let (passenger_tx, passenger_rx) = mpsc::channel();
     for b in bs {
         let c = Coord2 { x: b.0, y: b.1 + 1 };
         if map.can_build(c) {
@@ -120,7 +121,7 @@ fn main() {
                 let decider = ResidentDecider::new(c);
                 let agent = Agent::new(Coord2 { x: 40, y: 2 }, Box::new(decider));
                 //agents.insert(AgentKind::Resident, agent);
-                train_decider.passengers.push(agent);
+                passenger_tx.send(agent).unwrap();
             }
         } else {
             println!("{:?}", c);
@@ -128,12 +129,13 @@ fn main() {
         }
     }
 
+    let train_decider = TrainDecider::new(Coord2 { x: 42, y: 0 }, passenger_rx);
     let train_agent = Agent::new(Coord2 { x: 0, y: 0 }, Box::new(train_decider));
     agents.insert(AgentKind::Train, train_agent);
     //println!("{}", map);
 
     let map = Arc::new(RwLock::new(map));
-    RenderToPiston::new(agents, window, map).render_loop();
+    RenderToPiston::new(agents, window, map, passenger_tx).render_loop();
 
     // for i in 0..20 {
     //     let p = Coord2 { x: 40, y: i + 1 };
