@@ -359,7 +359,7 @@ impl Decider for TrainDecider {
             }
             TrainState::AtPlatform(remaining) => {
                 if remaining > 0 || !self.passengers.is_empty() {
-                    self.state = TrainState::AtPlatform(remaining - 1);
+                    self.state = TrainState::AtPlatform(remaining.saturating_sub(1));
                     if let Some(passenger) = self.passengers.pop() {
                         AgentAction::Yield(vec![passenger], Box::new(AgentAction::Idle))
                     } else {
