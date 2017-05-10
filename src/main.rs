@@ -110,6 +110,7 @@ fn main() {
                   (49, 17, 'h'),
                   (51, 17, 'h'),
                   (53, 17, 'h')];
+    let mut train_decider = TrainDecider::new(Coord2 { x: 42, y: 0 });
     for b in bs {
         let c = Coord2 { x: b.0, y: b.1 + 1 };
         if map.can_build(c) {
@@ -118,13 +119,17 @@ fn main() {
             if building == Building::House {
                 let decider = ResidentDecider::new(c);
                 let agent = Agent::new(Coord2 { x: 40, y: 2 }, Box::new(decider));
-                agents.insert(agent);
+                //agents.insert(AgentKind::Resident, agent);
+                train_decider.passengers.push(agent);
             }
         } else {
             println!("{:?}", c);
             panic!("Unbuildable seed building.");
         }
     }
+
+    let train_agent = Agent::new(Coord2 { x: 0, y: 0 }, Box::new(train_decider));
+    agents.insert(AgentKind::Train, train_agent);
     //println!("{}", map);
 
     let map = Arc::new(RwLock::new(map));

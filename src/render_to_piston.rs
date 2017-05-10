@@ -15,7 +15,6 @@ pub enum Cmd {
 }
 
 pub struct RenderToPiston {
-    time: u64,
     agents: Agents,
     window: PistonWindow,
     map: Arc<RwLock<Map>>,
@@ -23,9 +22,7 @@ pub struct RenderToPiston {
 
 impl RenderToPiston {
     pub fn new(agents: Agents, window: PistonWindow, map: Arc<RwLock<Map>>) -> RenderToPiston {
-        let time = 0;
         RenderToPiston {
-            time,
             agents,
             window,
             map,
@@ -43,7 +40,6 @@ impl RenderToPiston {
             if let Event::Update(_) = e {
                 let map = self.map.read().unwrap();
                 self.agents.update(&map);
-                self.time += 1;
             }
 
             if let Event::Render(_) = e {
@@ -104,7 +100,7 @@ impl RenderToPiston {
                     if building == Building::House {
                         let decider = ResidentDecider::new(pos);
                         let agent = Agent::new(Coord2 { x: 40, y: 2 }, Box::new(decider));
-                        self.agents.insert(agent);
+                        self.agents.insert(AgentKind::Resident, agent);
                     }
                 }
             }
@@ -112,13 +108,13 @@ impl RenderToPiston {
     }
 
     fn draw(&mut self, e: &Event) {
-        let time = self.time;
         let map = self.map.read().unwrap();
         let agent_subunit_positions = self.agents.agent_subunit_positions();
 
         self.window
             .draw_2d(e, |c, g| {
                 clear([0.95; 4], g);
+
                 for y in 0..map.height() {
                     for x in 0..map.width() {
                         let l = Coord2 { x, y };
@@ -128,13 +124,16 @@ impl RenderToPiston {
                     }
                 }
 
-                Self::draw_train_prototype(c, g, map.clone(), (10.0 + ((time as f64) / 10.0), 0.0));
+                for (kind, agents_of_kind) in agent_subunit_positions {
+                    for agent_subunit_position in agents_of_kind {
+                        match kind {
+                            AgentKind::Resident => Self::draw_agent(c, g, agent_subunit_position),
+                            AgentKind::Train => Self::draw_train(c, g, agent_subunit_position),
+                        }
+                    }
+                }
 
                 Self::draw_cursor(c, g, map.cursor);
-
-                for agent_subunit_position in agent_subunit_positions {
-                    Self::draw_agent(c, g, agent_subunit_position);
-                }
             });
     }
 
@@ -157,7 +156,7 @@ impl RenderToPiston {
                 g);
     }
 
-    fn draw_train_prototype(c: Context, g: &mut G2d, _: Map, l: (f64, f64)) {
+    fn draw_train(c: Context, g: &mut G2d, l: (f64, f64)) {
         let ppuf = PPU as f64;
         let mut x = l.0 * ppuf + 1.0;
         let w = (ppuf - 2.0) * 3.0;
