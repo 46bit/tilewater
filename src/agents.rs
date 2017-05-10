@@ -339,7 +339,7 @@ impl Decider for TrainDecider {
                     y: agent.position.y,
                 };
                 if head_pos == self.platform {
-                    self.state = TrainState::AtPlatform(30);
+                    self.state = TrainState::AtPlatform(18);
                     AgentAction::Yield(self.passengers.drain(..).collect(),
                                        Box::new(AgentAction::Idle))
                 } else {

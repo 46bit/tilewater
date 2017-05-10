@@ -158,12 +158,18 @@ impl RenderToPiston {
 
     fn draw_train(c: Context, g: &mut G2d, l: (f64, f64)) {
         let ppuf = PPU as f64;
-        let mut x = l.0 * ppuf + 1.0;
         let w = (ppuf - 2.0) * 3.0;
+        let mut x = l.0 * ppuf - 1.0 - w;
         let y = l.1 * ppuf;
         let h = ppuf + 1.0;
 
+        rectangle([0.3, 0.3, 0.3, 1.0],
+                  [x as f64, y as f64, w as f64, h as f64],
+                  c.transform,
+                  g);
+
         for i in 0..3 {
+            x -= w + 2.0;
             rectangle([0.0, 0.0, 0.0, 1.0],
                       [x as f64, y as f64, w as f64, h as f64],
                       c.transform,
@@ -176,13 +182,12 @@ impl RenderToPiston {
                       [x + w, y + 2.0, 2.0, h - 4.0],
                       c.transform,
                       g);
-            x += w + 2.0;
         }
 
-        rectangle([0.3, 0.3, 0.3, 1.0],
-                  [x as f64, y as f64, w as f64, h as f64],
-                  c.transform,
-                  g);
+        // rectangle([0.3, 0.3, 0.3, 1.0],
+        //           [x as f64, y as f64, w as f64, h as f64],
+        //           c.transform,
+        //           g);
     }
 
     fn draw_tile(c: Context, g: &mut G2d, _: Map, l: Coord2, tile: &Tile) {
