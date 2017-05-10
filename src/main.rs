@@ -1,5 +1,3 @@
-#![feature(inclusive_range_syntax)]
-
 extern crate clap;
 extern crate tilewater;
 extern crate piston_window;
@@ -24,50 +22,50 @@ fn main() {
 
     let mut map = Map::new(Coord2 { x: 80, y: 80 });
 
-    for y in 1...30 {
+    for y in 1..31 {
         let p = Coord2 { x: 40, y: y };
         if map.can_pave(p) {
             map.pave(p);
         }
     }
-    for x in 40...48 {
+    for x in 40..49 {
         let p = Coord2 { x: x, y: 3 };
         if map.can_pave(p) {
             map.pave(p);
         }
     }
-    for y in 3...15 {
+    for y in 3..16 {
         let p = Coord2 { x: 48, y: y };
         if map.can_pave(p) {
             map.pave(p);
         }
     }
-    for x in 48...55 {
+    for x in 48..56 {
         let p = Coord2 { x: x, y: 6 };
         if map.can_pave(p) {
             map.pave(p);
         }
     }
-    for y in 6...20 {
+    for y in 6..21 {
         let p = Coord2 { x: 55, y: y };
         if map.can_pave(p) {
             map.pave(p);
         }
     }
-    for x in 55...68 {
+    for x in 55..69 {
         let p = Coord2 { x: x, y: 9 };
         if map.can_pave(p) {
             map.pave(p);
         }
     }
-    for x in 40...64 {
+    for x in 40..65 {
         let p = Coord2 { x: x, y: 20 };
         if map.can_pave(p) {
             map.pave(p);
         }
     }
 
-    for x in 0...79 {
+    for x in 0..80 {
         let c = Coord2 { x: x, y: 0 };
         //if map.can_rail(c) {
         map.rail(c);
