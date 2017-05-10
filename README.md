@@ -6,9 +6,17 @@
 
 ## Get started
 
-Tilewater is built upon [Rust](https://www.rust-lang.org) and [Piston](http://www.piston.rs). For trivial reasons it uses Nightly Rust at the moment, so you'll need to install that first (details omitted as I'd rather wait until it is on stable.) You may also need `SDL2` libraries.
+Tilewater is built upon [Rust](https://www.rust-lang.org) and [Piston](http://www.piston.rs). To play it you'll need to install Rust and the `SDL2` libraries.
 
-Once you have that, `git clone https://github.com/46bit/tilewater.git` this repo and then `cargo run --release` to run the game. The `--release` flag is necessary for smooth animation, as tilewater is not heavily optimised and thus performance-hungry.
+1. Install Rust stable by following the instructions at **[rustup](https://rustup.rs)**.
+2. Once you have Rust installed, download the code and build it:
+   ```sh
+   git clone https://github.com/46bit/tilewater.git
+   cargo run --release
+   ```
+   If you get an error mentioning SDL2, you need to install some libraries. You can [find cross-platform instructions here](https://github.com/AngryLawyer/rust-sdl2#sdl20-development-libraries).
+
+The `--release` flag is necessary for smooth animation, as Tilewater is not heavily optimised and thus performance-hungry.
 
 ## Controls
 
