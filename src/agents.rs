@@ -352,16 +352,19 @@ impl Decider for TrainDecider {
                 };
                 if head_pos == self.platform {
                     self.state = TrainState::AtPlatform(18);
-                    AgentAction::Yield(self.passengers.drain(..).collect(),
-                                       Box::new(AgentAction::Idle))
+                    AgentAction::Idle
                 } else {
                     AgentAction::Move(Direction::East)
                 }
             }
             TrainState::AtPlatform(remaining) => {
-                if remaining > 0 {
+                if remaining > 0 || !self.passengers.is_empty() {
                     self.state = TrainState::AtPlatform(remaining - 1);
-                    AgentAction::Idle
+                    if let Some(passenger) = self.passengers.pop() {
+                        AgentAction::Yield(vec![passenger], Box::new(AgentAction::Idle))
+                    } else {
+                        AgentAction::Idle
+                    }
                 } else {
                     self.state = TrainState::Departing;
                     AgentAction::Move(Direction::East)
