@@ -1,14 +1,14 @@
 [package]
 name = "tilewater"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Michael Mokrysz <hi@46b.it>"]
 
 [dependencies]
-clap = "2.23.1"
-rand = "0.3"
-piston_window = "0.61.0"
-uuid = { version = "0.4", features = ["v4"] }
-rayon = "0.7.0"
+clap = "2.31.2"
+rand = "0.5"
+piston_window = "0.70.0"
+uuid = { version = "0.6.5", features = ["v4"] }
+rayon = "1.0.1"
 
 [[bin]]
 name = "tilewater"

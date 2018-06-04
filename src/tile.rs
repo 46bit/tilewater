@@ -1,5 +1,5 @@
-use std::collections::*;
 use super::*;
+use std::collections::*;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BuildingTile {
@@ -98,19 +98,15 @@ impl fmt::Display for Tile {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Tile::Building(BuildingTile { building, .. }) => write!(f, "{}", building),
-            Tile::Entrance(EntranceTile { orientation, .. }) => {
-                match orientation {
-                    Orientation::Vertical => write!(f, "|"),
-                    Orientation::Horizontal => write!(f, "-"),
-                }
-            }
+            Tile::Entrance(EntranceTile { orientation, .. }) => match orientation {
+                Orientation::Vertical => write!(f, "|"),
+                Orientation::Horizontal => write!(f, "-"),
+            },
             Tile::Paving(PavingTile { .. }) => write!(f, ":"),
-            Tile::Rails(RailsTile { orientation, .. }) => {
-                match orientation {
-                    Orientation::Vertical => write!(f, "‖"),
-                    Orientation::Horizontal => write!(f, "="),
-                }
-            }
+            Tile::Rails(RailsTile { orientation, .. }) => match orientation {
+                Orientation::Vertical => write!(f, "‖"),
+                Orientation::Horizontal => write!(f, "="),
+            },
         }
     }
 }

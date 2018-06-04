@@ -1,6 +1,6 @@
-use std::collections::*;
-use std::cmp::{min, max, Ordering};
 use super::*;
+use std::cmp::{max, min, Ordering};
+use std::collections::*;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Route {
@@ -30,9 +30,9 @@ pub fn route(map: &Map, start_pos: Coord2, goal_pos: Coord2) -> Route {
     // Max heap thus use negative of costs.
     let mut f_score = BinaryHeap::new();
     f_score.push(FScoreItem {
-                     f_score: -heuristic_cost_estimate(start_pos, goal_pos),
-                     item: start_pos,
-                 });
+        f_score: -heuristic_cost_estimate(start_pos, goal_pos),
+        item: start_pos,
+    });
 
     while !open.is_empty() {
         let current_pos = match f_score.pop() {
@@ -62,10 +62,9 @@ pub fn route(map: &Map, start_pos: Coord2, goal_pos: Coord2) -> Route {
             came_from.insert(neighbour_pos, current_pos);
             g_score.insert(neighbour_pos, tentative_g_score);
             f_score.push(FScoreItem {
-                             f_score: -(tentative_g_score +
-                                        heuristic_cost_estimate(neighbour_pos, goal_pos)),
-                             item: neighbour_pos,
-                         });
+                f_score: -(tentative_g_score + heuristic_cost_estimate(neighbour_pos, goal_pos)),
+                item: neighbour_pos,
+            });
         }
     }
 
@@ -132,14 +131,16 @@ pub fn closest_building(map: &Map, start_pos: Coord2, building: Building) -> Opt
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 struct FScoreItem<T>
-    where T: PartialEq + Eq
+where
+    T: PartialEq + Eq,
 {
     f_score: i64,
     item: T,
 }
 
 impl<T> PartialOrd for FScoreItem<T>
-    where T: PartialEq + Eq
+where
+    T: PartialEq + Eq,
 {
     fn partial_cmp(&self, other: &FScoreItem<T>) -> Option<Ordering> {
         Some(self.f_score.cmp(&other.f_score))
@@ -147,7 +148,8 @@ impl<T> PartialOrd for FScoreItem<T>
 }
 
 impl<T> Ord for FScoreItem<T>
-    where T: PartialEq + Eq
+where
+    T: PartialEq + Eq,
 {
     fn cmp(&self, other: &FScoreItem<T>) -> Ordering {
         self.f_score.cmp(&other.f_score)
@@ -156,16 +158,18 @@ impl<T> Ord for FScoreItem<T>
 
 fn tile_neighbours(tile: &Tile) -> Vec<Coord2> {
     match *tile {
-        Tile::Building(BuildingTile { ref entryway_pos, .. }) => vec![*entryway_pos],
+        Tile::Building(BuildingTile {
+            ref entryway_pos, ..
+        }) => vec![*entryway_pos],
         Tile::Entrance(EntranceTile {
-                           ref road_pos,
-                           ref building_pos,
-                           ..
-                       }) => vec![*road_pos, *building_pos],
+            ref road_pos,
+            ref building_pos,
+            ..
+        }) => vec![*road_pos, *building_pos],
         Tile::Paving(PavingTile {
-                         ref entryways_pos,
-                         ref pavings_pos,
-                     }) => {
+            ref entryways_pos,
+            ref pavings_pos,
+        }) => {
             // This is inherently opinionated. We prioritise local entryways
             // over other pavings.
             entryways_pos

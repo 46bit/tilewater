@@ -1,5 +1,5 @@
-use std::collections::*;
 use super::*;
+use std::collections::*;
 
 #[derive(Clone, Debug)]
 pub struct Map {
@@ -17,14 +17,16 @@ impl Map {
         // @TODO: Instead spawn a station on the railway track, and an entranceway
         // - and maybe a road tile attached the entranceway, if the roadless entryway
         // causes coding problems.
-        tiles.insert(Coord2 {
-                         x: dimensions.x / 2,
-                         y: 0,
-                     },
-                     Tile::Paving(PavingTile {
-                                      entryways_pos: HashSet::new(),
-                                      pavings_pos: HashSet::new(),
-                                  }));
+        tiles.insert(
+            Coord2 {
+                x: dimensions.x / 2,
+                y: 0,
+            },
+            Tile::Paving(PavingTile {
+                entryways_pos: HashSet::new(),
+                pavings_pos: HashSet::new(),
+            }),
+        );
         Map {
             cursor,
             dimensions,
@@ -52,9 +54,9 @@ impl Map {
 
         // Insert the new building.
         let building_tile = Tile::Building(BuildingTile {
-                                               building: building,
-                                               entryway_pos: entryway_pos,
-                                           });
+            building: building,
+            entryway_pos: entryway_pos,
+        });
         self.tiles.insert(location, building_tile);
         self.buildings
             .entry(building)
@@ -63,10 +65,10 @@ impl Map {
 
         // Insert the new entrance.
         let entrance_tile = Tile::Entrance(EntranceTile {
-                                               road_pos: road_pos,
-                                               building_pos: location,
-                                               orientation: orientation,
-                                           });
+            road_pos: road_pos,
+            building_pos: location,
+            orientation: orientation,
+        });
         self.tiles.insert(entryway_pos, entrance_tile);
 
         // Update road the entrance attaches, to record this new entryway.
@@ -91,18 +93,18 @@ impl Map {
                 .insert(location);
         }
         let paving_tile = Tile::Paving(PavingTile {
-                                           entryways_pos: HashSet::new(),
-                                           pavings_pos: neighbouring_pavings,
-                                       });
+            entryways_pos: HashSet::new(),
+            pavings_pos: neighbouring_pavings,
+        });
         self.tiles.insert(location, paving_tile);
     }
 
     pub fn rail(&mut self, location: Coord2) {
         let rail_tile = Tile::Rails(RailsTile {
-                                        rails_pos: HashSet::new(),
-                                        orientation: Orientation::Horizontal,
-                                        is_station: false,
-                                    });
+            rails_pos: HashSet::new(),
+            orientation: Orientation::Horizontal,
+            is_station: false,
+        });
         self.tiles.insert(location, rail_tile);
     }
 
@@ -123,9 +125,9 @@ impl Map {
                 self.delete_building(building_pos, location);
             }
             Tile::Paving(PavingTile {
-                             entryways_pos,
-                             pavings_pos,
-                         }) => {
+                entryways_pos,
+                pavings_pos,
+            }) => {
                 // Delete entrances, their buildings and this paving.
                 for entryway_pos in entryways_pos {
                     self.delete(entryway_pos);
@@ -155,7 +157,10 @@ impl Map {
             _ => panic!("Known entryway did not exist."),
         };
         match self.tiles.get_mut(&paving_pos) {
-            Some(&mut Tile::Paving(PavingTile { ref mut entryways_pos, .. })) => {
+            Some(&mut Tile::Paving(PavingTile {
+                ref mut entryways_pos,
+                ..
+            })) => {
                 entryways_pos.remove(&entryway_pos);
             }
             _ => {
@@ -166,7 +171,8 @@ impl Map {
         }
 
         // Remove record of building.
-        let building = self.tiles
+        let building = self
+            .tiles
             .get(&building_pos)
             .and_then(Tile::as_building)
             .unwrap()
@@ -215,8 +221,7 @@ impl Map {
             // - Railway
             // At least for now, anything new we add will also count.
             match self.get(neighbour) {
-                None |
-                Some(&Tile::Paving { .. }) => {}
+                None | Some(&Tile::Paving { .. }) => {}
                 _ => return false,
             }
         }
@@ -250,9 +255,9 @@ impl Map {
         locations
             .into_iter()
             .filter(|l| match self.get(*l) {
-                        Some(&Tile::Paving { .. }) => true,
-                        _ => false,
-                    })
+                Some(&Tile::Paving { .. }) => true,
+                _ => false,
+            })
             .collect()
     }
 
@@ -261,7 +266,7 @@ impl Map {
         let mut entryway_coords = Vec::with_capacity(nsew_nearby_roads.len());
         for nsew_nearby_road in nsew_nearby_roads {
             let orientation = Orientation::between_coord2s(location, nsew_nearby_road)
-                                  .expect("Nearby roads must not be the cell itself.");
+                .expect("Nearby roads must not be the cell itself.");
             let entryway_coord;
             if nsew_nearby_road.x == location.x && nsew_nearby_road.y != location.y {
                 if nsew_nearby_road.y < location.y {

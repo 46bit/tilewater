@@ -1,11 +1,11 @@
+use super::*;
+use rand::*;
+use rayon::prelude::*;
 use std::collections::*;
 use std::fmt::Debug;
 use std::mem;
 use std::sync::{mpsc, Mutex};
 use uuid::Uuid;
-use rand::*;
-use rayon::prelude::*;
-use super::*;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum AgentKind {
@@ -40,7 +40,7 @@ impl Agents {
         for agents_of_kind in self.agents.values_mut() {
             // @TODO: Reintroduce `par_iter_mut` using `flat_map`.
             for agent in agents_of_kind.values_mut() {
-                let mut rng: Box<Rng> = Box::new(thread_rng());
+                let mut rng: Box<RngCore> = Box::new(thread_rng());
                 let agent_state_clone = agent.state.clone();
                 agent.action = agent
                     .decider
@@ -80,27 +80,26 @@ impl Agents {
             let dead_agent_ids: Vec<_> = agents_of_kind
                 .par_iter_mut()
                 .filter_map(|(_, agent)| match agent.action {
-                                AgentAction::Dead => Some(agent.state.id),
-                                AgentAction::Idle => None,
-                                AgentAction::Move(direction) => {
-                    let direction_offset = direction.as_offset();
-                    agent.subunit_position.0 += (direction_offset.0 as f64) /
-                                                (ticks_per_unit as f64);
-                    agent.subunit_position.1 += (direction_offset.1 as f64) /
-                                                (ticks_per_unit as f64);
-                    if ticks_this_unit == ticks_per_unit {
-                        agent.state.position.x =
-                            ((agent.state.position.x as i64) + direction_offset.0) as u64;
-                        agent.state.position.y =
-                            ((agent.state.position.y as i64) + direction_offset.1) as u64;
-                        agent.subunit_position.0 = agent.state.position.x as f64;
-                        agent.subunit_position.1 = agent.state.position.y as f64;
+                    AgentAction::Dead => Some(agent.state.id),
+                    AgentAction::Idle => None,
+                    AgentAction::Move(direction) => {
+                        let direction_offset = direction.as_offset();
+                        agent.subunit_position.0 +=
+                            (direction_offset.0 as f64) / (ticks_per_unit as f64);
+                        agent.subunit_position.1 +=
+                            (direction_offset.1 as f64) / (ticks_per_unit as f64);
+                        if ticks_this_unit == ticks_per_unit {
+                            agent.state.position.x =
+                                ((agent.state.position.x as i64) + direction_offset.0) as u64;
+                            agent.state.position.y =
+                                ((agent.state.position.y as i64) + direction_offset.1) as u64;
+                            agent.subunit_position.0 = agent.state.position.x as f64;
+                            agent.subunit_position.1 = agent.state.position.y as f64;
+                        }
+                        None
                     }
-                    None
-                }
-                                AgentAction::Yield(_, _) |
-                                AgentAction::Jump(_, _) => unreachable!(),
-                            })
+                    AgentAction::Yield(_, _) | AgentAction::Jump(_, _) => unreachable!(),
+                })
                 .collect();
             for dead_agent_id in dead_agent_ids {
                 agents_of_kind.remove(&dead_agent_id);
@@ -164,7 +163,7 @@ pub struct AgentState {
 }
 
 pub trait Decider: Debug {
-    fn decide_action(&mut self, agent: &AgentState, map: &Map, rng: &mut Box<Rng>) -> AgentAction;
+    fn decide_action(&mut self, agent: &AgentState, map: &Map, rng: &mut Box<RngCore>) -> AgentAction;
 
     // @TODO: Figure out how to implement respawning. This would require an agent to know
     // where it should respawn, which imposes some tough information requirements.
@@ -200,12 +199,13 @@ impl ResidentDecider {
         }
     }
 
-    fn going_to(&mut self,
-                agent: &AgentState,
-                map: &Map,
-                to: Coord2,
-                and_then: (ResidentState, AgentAction))
-                -> AgentAction {
+    fn going_to(
+        &mut self,
+        agent: &AgentState,
+        map: &Map,
+        to: Coord2,
+        and_then: (ResidentState, AgentAction),
+    ) -> AgentAction {
         match direction_of_route(map, agent.position, to) {
             RouteDirection::NotRouteable => AgentAction::Dead,
             RouteDirection::Complete => {
@@ -224,7 +224,7 @@ impl ResidentDecider {
 }
 
 impl Decider for ResidentDecider {
-    fn decide_action(&mut self, agent: &AgentState, map: &Map, rng: &mut Box<Rng>) -> AgentAction {
+    fn decide_action(&mut self, agent: &AgentState, map: &Map, rng: &mut Box<RngCore>) -> AgentAction {
         // Ensure that idle residents are killed if the square they are on is deleted.
         if map.get(agent.position).is_none() {
             return AgentAction::Dead;
@@ -236,9 +236,9 @@ impl Decider for ResidentDecider {
                 self.going_to(agent, map, home, (ResidentState::AtHome, AgentAction::Idle))
             }
             ResidentState::AtHome => {
-                let go_drinking = rng.gen_weighted_bool(60);
-                let go_shopping = rng.gen_weighted_bool(40);
-                let go_working = rng.gen_weighted_bool(80);
+                let go_drinking = rng.gen_bool(1.0 / 60.0);
+                let go_shopping = rng.gen_bool(1.0 / 40.0);
+                let go_working = rng.gen_bool(1.0 / 80.0);
 
                 if go_working && self.work.is_some() {
                     self.state = ResidentState::GoingToWork;
@@ -246,10 +246,22 @@ impl Decider for ResidentDecider {
                     let work = self.work.unwrap();
                     self.going_to(agent, map, work, and_then)
                 } else {
-                    let (building_type, state_constructor, done_state): (Building, fn(Coord2) -> ResidentState, ResidentState) = if go_drinking {
-                        (Building::Saloon, ResidentState::GoingToDrink, ResidentState::Drinking)
+                    let (building_type, state_constructor, done_state): (
+                        Building,
+                        fn(Coord2) -> ResidentState,
+                        ResidentState,
+                    ) = if go_drinking {
+                        (
+                            Building::Saloon,
+                            ResidentState::GoingToDrink,
+                            ResidentState::Drinking,
+                        )
                     } else if go_shopping {
-                        (Building::GeneralStore, ResidentState::GoingToShop, ResidentState::Shopping)
+                        (
+                            Building::GeneralStore,
+                            ResidentState::GoingToShop,
+                            ResidentState::Shopping,
+                        )
                     } else {
                         return AgentAction::Idle;
                     };
@@ -266,7 +278,7 @@ impl Decider for ResidentDecider {
                 self.going_to(agent, map, shop_pos, and_then)
             }
             ResidentState::Shopping => {
-                if rng.gen_weighted_bool(10) {
+                if rng.gen_bool(0.1) {
                     self.go_home(agent, map)
                 } else {
                     AgentAction::Idle
@@ -277,15 +289,15 @@ impl Decider for ResidentDecider {
                 self.going_to(agent, map, saloon_pos, and_then)
             }
             ResidentState::Drinking => {
-                let chance_of_new_job = if self.work.is_none() { 1000 } else { 100 };
-                if rng.gen_weighted_bool(chance_of_new_job) {
+                let chance_of_new_job = if self.work.is_none() { 0.01 } else { 0.001 };
+                if rng.gen_bool(chance_of_new_job) {
                     let random_factory = *rng.choose(&map.buildings[&Building::Factory]).unwrap();
                     self.work = Some(random_factory);
                     self.state = ResidentState::GoingToWork;
                     let and_then = (ResidentState::Working, AgentAction::Idle);
                     let work = self.work.unwrap();
                     self.going_to(agent, map, work, and_then)
-                } else if rng.gen_weighted_bool(40) {
+                } else if rng.gen_bool(1.0 / 40.0) {
                     self.go_home(agent, map)
                 } else {
                     AgentAction::Idle
@@ -297,7 +309,7 @@ impl Decider for ResidentDecider {
                 self.going_to(agent, map, work, and_then)
             }
             ResidentState::Working => {
-                if rng.gen_weighted_bool(2000) {
+                if rng.gen_bool(1.0 / 2000.0) {
                     self.go_home(agent, map)
                 } else {
                     AgentAction::Idle
@@ -343,7 +355,7 @@ impl TrainDecider {
 }
 
 impl Decider for TrainDecider {
-    fn decide_action(&mut self, agent: &AgentState, _: &Map, rng: &mut Box<Rng>) -> AgentAction {
+    fn decide_action(&mut self, agent: &AgentState, _: &Map, rng: &mut Box<RngCore>) -> AgentAction {
         match self.state {
             TrainState::Arriving => {
                 let head_pos = Coord2 {
@@ -397,14 +409,18 @@ impl Decider for TrainDecider {
                     if !self.passengers.is_empty() {
                         self.take_all_ready_passengers();
                         self.state = TrainState::Arriving;
-                        AgentAction::Jump(Coord2 { x: 0, y: 0 },
-                                          Box::new(AgentAction::Move(Direction::East)))
+                        AgentAction::Jump(
+                            Coord2 { x: 0, y: 0 },
+                            Box::new(AgentAction::Move(Direction::East)),
+                        )
                     } else {
                         self.take_all_ready_passengers();
-                        if rng.gen_weighted_bool(68) {
+                        if rng.gen_bool(1.0 / 68.0) {
                             self.state = TrainState::Arriving;
-                            AgentAction::Jump(Coord2 { x: 0, y: 0 },
-                                              Box::new(AgentAction::Move(Direction::East)))
+                            AgentAction::Jump(
+                                Coord2 { x: 0, y: 0 },
+                                Box::new(AgentAction::Move(Direction::East)),
+                            )
                         } else {
                             AgentAction::Idle
                         }

@@ -1,22 +1,23 @@
-extern crate rand;
 extern crate piston_window;
-extern crate uuid;
+extern crate rand;
 extern crate rayon;
+extern crate uuid;
 
-mod tile;
-mod map;
 mod agents;
-mod routing;
+mod map;
 mod render_to_piston;
+mod routing;
+mod tile;
 
-pub use tile::*;
-pub use map::*;
 pub use agents::*;
-pub use routing::*;
+pub use map::*;
 pub use render_to_piston::*;
+pub use routing::*;
+pub use tile::*;
 
 use std::fmt;
-use std::ops::{Add, Sub, Mul};
+use std::ops::{Add, Mul, Sub};
+use piston_window::Key;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Coord2 {
@@ -86,8 +87,9 @@ impl Sub for Coord2 {
 
 // Allows multiplying all components of `Coord2` by a `u64` scalar.
 impl<T> Mul<T> for Coord2
-    where u64: Mul<T, Output = u64>,
-          T: Clone
+where
+    u64: Mul<T, Output = u64>,
+    T: Clone,
 {
     type Output = Coord2;
 
@@ -265,6 +267,17 @@ pub enum Building {
 }
 
 impl Building {
+    pub fn from_key(code: Key) -> Option<Building> {
+        match code {
+            Key::H => Some(Building::House),
+            Key::S => Some(Building::Saloon),
+            Key::F => Some(Building::Factory),
+            Key::G => Some(Building::GeneralStore),
+            Key::R => Some(Building::TrainStation),
+            _ => None,
+        }
+    }
+
     pub fn from_code(code: char) -> Option<Building> {
         match code {
             'h' => Some(Building::House),
