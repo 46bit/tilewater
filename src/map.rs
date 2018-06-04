@@ -214,6 +214,17 @@ impl Map {
     }
 
     pub fn can_pave(&self, location: Coord2) -> bool {
+        !self.neighbours_a_building(location) && self.can_walk(location)
+    }
+
+    pub fn can_walk(&self, location: Coord2) -> bool {
+        match self.get(location) {
+            Some(Tile::Paving { .. }) | None => true,
+            _ => false,
+        }
+    }
+
+    fn neighbours_a_building(&self, location: Coord2) -> bool {
         for neighbour in location.neighbours() {
             // Must not be:
             // - Building
@@ -222,17 +233,10 @@ impl Map {
             // At least for now, anything new we add will also count.
             match self.get(neighbour) {
                 None | Some(&Tile::Paving { .. }) => {}
-                _ => return false,
+                _ => return true,
             }
         }
-        self.can_walk(location)
-    }
-
-    pub fn can_walk(&self, location: Coord2) -> bool {
-        match self.get(location) {
-            Some(Tile::Paving { .. }) | None => true,
-            _ => false,
-        }
+        false
     }
 
     fn neighbouring_pavings(&self, location: Coord2) -> HashSet<Coord2> {

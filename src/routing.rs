@@ -3,6 +3,7 @@ use std::cmp::{max, min, Ordering};
 use std::collections::*;
 
 const COST_OF_AN_EMPTY_TILE: f64 = 30.0;
+const COST_OF_AN_EMPTY_TILE_NEXT_TO_A_BUILDING: f64 = COST_OF_AN_EMPTY_TILE * 4.0;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Route {
@@ -191,9 +192,14 @@ fn tile_neighbours(tile: Option<&Tile>, location: Coord2, map: &Map) -> Vec<(Coo
                 .map(|(location, _)| location)
                 .collect();
             for neighbour in location.neighbours() {
-                if !neighbours.contains(&neighbour) && map.can_pave(neighbour) {
+                if !neighbours.contains(&neighbour) && map.can_walk(neighbour) {
+                    let cost = if map.can_pave(neighbour) {
+                        COST_OF_AN_EMPTY_TILE
+                    } else {
+                        COST_OF_AN_EMPTY_TILE_NEXT_TO_A_BUILDING
+                    };
                     neighbours.insert(neighbour);
-                    neighbours_with_costs.push((neighbour, COST_OF_AN_EMPTY_TILE));
+                    neighbours_with_costs.push((neighbour, cost));
                 }
             }
             neighbours_with_costs
@@ -204,7 +210,14 @@ fn tile_neighbours(tile: Option<&Tile>, location: Coord2, map: &Map) -> Vec<(Coo
             .neighbours()
             .into_iter()
             .filter(|neighbour| map.can_walk(*neighbour))
-            .map(|neighbour| (neighbour, COST_OF_AN_EMPTY_TILE))
+            .map(|neighbour| {
+                let cost = if map.can_pave(neighbour) {
+                    COST_OF_AN_EMPTY_TILE
+                } else {
+                    COST_OF_AN_EMPTY_TILE_NEXT_TO_A_BUILDING
+                };
+                (neighbour, cost)
+            })
             .collect(),
     }
 }
