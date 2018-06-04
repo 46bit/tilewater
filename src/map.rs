@@ -225,7 +225,14 @@ impl Map {
                 _ => return false,
             }
         }
-        true
+        self.can_walk(location)
+    }
+
+    pub fn can_walk(&self, location: Coord2) -> bool {
+        match self.get(location) {
+            Some(Tile::Paving { .. }) | None => true,
+            _ => false,
+        }
     }
 
     fn neighbouring_pavings(&self, location: Coord2) -> HashSet<Coord2> {

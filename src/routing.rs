@@ -48,7 +48,7 @@ pub fn route(map: &Map, start_pos: Coord2, goal_pos: Coord2) -> Route {
         open.remove(&current_pos);
         closed.insert(current_pos);
         let current = map.get(current_pos);
-        for (neighbour_pos, neighbour_move_cost) in tile_neighbours(current, current_pos) {
+        for (neighbour_pos, neighbour_move_cost) in tile_neighbours(current, current_pos, map) {
             if closed.contains(&neighbour_pos) {
                 continue;
             }
@@ -161,7 +161,7 @@ where
     }
 }
 
-fn tile_neighbours(tile: Option<&Tile>, location: Coord2) -> Vec<(Coord2, f64)> {
+fn tile_neighbours(tile: Option<&Tile>, location: Coord2, map: &Map) -> Vec<(Coord2, f64)> {
     match tile.clone() {
         Some(Tile::Building(BuildingTile {
             ref entryway_pos, ..
@@ -191,7 +191,7 @@ fn tile_neighbours(tile: Option<&Tile>, location: Coord2) -> Vec<(Coord2, f64)> 
                 .map(|(location, _)| location)
                 .collect();
             for neighbour in location.neighbours() {
-                if !neighbours.contains(&neighbour) {
+                if !neighbours.contains(&neighbour) && map.can_pave(neighbour) {
                     neighbours.insert(neighbour);
                     neighbours_with_costs.push((neighbour, COST_OF_AN_EMPTY_TILE));
                 }
@@ -203,6 +203,7 @@ fn tile_neighbours(tile: Option<&Tile>, location: Coord2) -> Vec<(Coord2, f64)> 
         None => location
             .neighbours()
             .into_iter()
+            .filter(|neighbour| map.can_walk(*neighbour))
             .map(|neighbour| (neighbour, COST_OF_AN_EMPTY_TILE))
             .collect(),
     }
