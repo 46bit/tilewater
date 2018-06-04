@@ -225,7 +225,7 @@ impl Map {
                 _ => return false,
             }
         }
-        !self.neighbouring_pavings(location).is_empty()
+        true
     }
 
     fn neighbouring_pavings(&self, location: Coord2) -> HashSet<Coord2> {
