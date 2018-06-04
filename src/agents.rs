@@ -163,7 +163,12 @@ pub struct AgentState {
 }
 
 pub trait Decider: Debug {
-    fn decide_action(&mut self, agent: &AgentState, map: &Map, rng: &mut Box<RngCore>) -> AgentAction;
+    fn decide_action(
+        &mut self,
+        agent: &AgentState,
+        map: &Map,
+        rng: &mut Box<RngCore>,
+    ) -> AgentAction;
 
     // @TODO: Figure out how to implement respawning. This would require an agent to know
     // where it should respawn, which imposes some tough information requirements.
@@ -224,11 +229,16 @@ impl ResidentDecider {
 }
 
 impl Decider for ResidentDecider {
-    fn decide_action(&mut self, agent: &AgentState, map: &Map, rng: &mut Box<RngCore>) -> AgentAction {
+    fn decide_action(
+        &mut self,
+        agent: &AgentState,
+        map: &Map,
+        rng: &mut Box<RngCore>,
+    ) -> AgentAction {
         // Ensure that idle residents are killed if the square they are on is deleted.
-        if map.get(agent.position).is_none() {
-            return AgentAction::Dead;
-        }
+        //if map.get(agent.position).is_none() {
+        //    return AgentAction::Dead;
+        //}
 
         let home = self.home;
         match self.state {
@@ -355,7 +365,12 @@ impl TrainDecider {
 }
 
 impl Decider for TrainDecider {
-    fn decide_action(&mut self, agent: &AgentState, _: &Map, rng: &mut Box<RngCore>) -> AgentAction {
+    fn decide_action(
+        &mut self,
+        agent: &AgentState,
+        _: &Map,
+        rng: &mut Box<RngCore>,
+    ) -> AgentAction {
         match self.state {
             TrainState::Arriving => {
                 let head_pos = Coord2 {

@@ -2,6 +2,8 @@ use super::*;
 use std::cmp::{max, min, Ordering};
 use std::collections::*;
 
+const COST_OF_AN_EMPTY_TILE: f64 = 30.0;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Route {
     NotRouteable,
@@ -16,7 +18,7 @@ pub fn route(map: &Map, start_pos: Coord2, goal_pos: Coord2) -> Route {
     if start_pos == goal_pos {
         return Route::Complete;
     }
-    if map.get(start_pos).is_none() || map.get(goal_pos).is_none() {
+    if map.get(goal_pos).is_none() {
         return Route::NotRouteable;
     }
 
@@ -26,7 +28,7 @@ pub fn route(map: &Map, start_pos: Coord2, goal_pos: Coord2) -> Route {
     let mut came_from = HashMap::new();
 
     let mut g_score = HashMap::new();
-    g_score.insert(start_pos, 0);
+    g_score.insert(start_pos, 0.0);
     // Max heap thus use negative of costs.
     let mut f_score = BinaryHeap::new();
     f_score.push(FScoreItem {
@@ -45,15 +47,12 @@ pub fn route(map: &Map, start_pos: Coord2, goal_pos: Coord2) -> Route {
 
         open.remove(&current_pos);
         closed.insert(current_pos);
-        let current = match map.get(current_pos) {
-            Some(current) => current,
-            None => continue,
-        };
-        for neighbour_pos in tile_neighbours(current) {
+        let current = map.get(current_pos);
+        for (neighbour_pos, neighbour_move_cost) in tile_neighbours(current, current_pos) {
             if closed.contains(&neighbour_pos) {
                 continue;
             }
-            let tentative_g_score = g_score[&current_pos] + 1;
+            let tentative_g_score = g_score[&current_pos] + neighbour_move_cost;
             if !open.contains(&neighbour_pos) {
                 open.insert(neighbour_pos);
             } else if tentative_g_score >= g_score[&neighbour_pos] {
@@ -129,13 +128,19 @@ pub fn closest_building(map: &Map, start_pos: Coord2, building: Building) -> Opt
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 struct FScoreItem<T>
 where
     T: PartialEq + Eq,
 {
-    f_score: i64,
+    f_score: f64,
     item: T,
+}
+
+impl<T> Eq for FScoreItem<T>
+where
+    T: PartialEq + Eq,
+{
 }
 
 impl<T> PartialOrd for FScoreItem<T>
@@ -143,7 +148,7 @@ where
     T: PartialEq + Eq,
 {
     fn partial_cmp(&self, other: &FScoreItem<T>) -> Option<Ordering> {
-        Some(self.f_score.cmp(&other.f_score))
+        self.f_score.partial_cmp(&other.f_score)
     }
 }
 
@@ -152,34 +157,54 @@ where
     T: PartialEq + Eq,
 {
     fn cmp(&self, other: &FScoreItem<T>) -> Ordering {
-        self.f_score.cmp(&other.f_score)
+        self.partial_cmp(&other).unwrap()
     }
 }
 
-fn tile_neighbours(tile: &Tile) -> Vec<Coord2> {
-    match *tile {
-        Tile::Building(BuildingTile {
+fn tile_neighbours(tile: Option<&Tile>, location: Coord2) -> Vec<(Coord2, f64)> {
+    match tile.clone() {
+        Some(Tile::Building(BuildingTile {
             ref entryway_pos, ..
-        }) => vec![*entryway_pos],
-        Tile::Entrance(EntranceTile {
+        })) => vec![(*entryway_pos, 0.1)],
+        Some(Tile::Entrance(EntranceTile {
             ref road_pos,
             ref building_pos,
             ..
-        }) => vec![*road_pos, *building_pos],
-        Tile::Paving(PavingTile {
+        })) => vec![(*road_pos, 0.1), (*building_pos, 0.1)],
+        Some(Tile::Paving(PavingTile {
             ref entryways_pos,
             ref pavings_pos,
-        }) => {
+        })) => {
             // This is inherently opinionated. We prioritise local entryways
             // over other pavings.
-            entryways_pos
+            let mut neighbours_with_costs: Vec<(Coord2, f64)> = entryways_pos
                 .iter()
                 .cloned()
-                .chain(pavings_pos.iter().cloned())
-                .collect()
+                .map(|e| (e, 0.1))
+                .chain(pavings_pos.iter().map(|p| (*p, 1.0)))
+                .collect();
+            // To maintain entryway-before-paving priority order, we add empty
+            // tiles in a second pass.
+            let mut neighbours: HashSet<Coord2> = neighbours_with_costs
+                .clone()
+                .into_iter()
+                .map(|(location, _)| location)
+                .collect();
+            for neighbour in location.neighbours() {
+                if !neighbours.contains(&neighbour) {
+                    neighbours.insert(neighbour);
+                    neighbours_with_costs.push((neighbour, COST_OF_AN_EMPTY_TILE));
+                }
+            }
+            neighbours_with_costs
         }
         // We don't route things along railways. Yet.
-        Tile::Rails(RailsTile { .. }) => vec![],
+        Some(Tile::Rails(RailsTile { .. })) => vec![],
+        None => location
+            .neighbours()
+            .into_iter()
+            .map(|neighbour| (neighbour, COST_OF_AN_EMPTY_TILE))
+            .collect(),
     }
 }
 
@@ -193,8 +218,8 @@ fn reconstruct_path(came_from: HashMap<Coord2, Coord2>, mut current_pos: Coord2)
     path
 }
 
-fn heuristic_cost_estimate(current_pos: Coord2, goal_pos: Coord2) -> i64 {
+fn heuristic_cost_estimate(current_pos: Coord2, goal_pos: Coord2) -> f64 {
     let x_diff = max(goal_pos.x, current_pos.x) - min(goal_pos.x, current_pos.x);
     let y_diff = max(goal_pos.y, current_pos.y) - min(goal_pos.y, current_pos.y);
-    (x_diff + y_diff) as i64
+    (x_diff + y_diff) as f64
 }

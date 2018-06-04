@@ -1057,7 +1057,7 @@ dependencies = [
 
 [[package]]
 name = "tilewater"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "clap 2.31.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "piston_window 0.70.0 (registry+https://github.com/rust-lang/crates.io-index)",

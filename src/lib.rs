@@ -15,9 +15,9 @@ pub use render_to_piston::*;
 pub use routing::*;
 pub use tile::*;
 
+use piston_window::Key;
 use std::fmt;
 use std::ops::{Add, Mul, Sub};
-use piston_window::Key;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Coord2 {
